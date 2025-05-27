@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<!-- Danh sách các quán ăn trong giỏ hàng -->
+<div class="mb-5">
+  <!-- Quán ăn 1 -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body p-0">
+      <!-- Header -->
+      <div class="d-flex align-items-center bg-light px-3 py-2 border-bottom fw-bold">
+        <input type="checkbox" class="form-check-input me-3">
+        <span class="me-3 fs-5">Nhà hàng Gà Rán Leo</span>
+        <span class="me-3" style="width:70px;"></span><!-- Cột hình ảnh trống ở header -->
+        <span class="ms-auto d-none d-md-block" style="width:120px;">Đơn giá</span>
+        <span class="d-none d-md-block" style="width:90px;">Đơn vị</span>
+        <span class="d-none d-md-block" style="width:120px;">Số lượng</span>
+        <span class="d-none d-md-block" style="width:80px;">Thao tác</span>
+      </div>
+      <!-- Món ăn 1 -->
+      <div class="d-flex align-items-center px-3 py-2 border-bottom">
+        <input type="checkbox" class="form-check-input me-3">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             alt="Gà Rán Giòn Cay" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
+        <span class="me-3 flex-grow-1">Gà Rán Giòn Cay</span>
+        <span class="ms-auto" style="width:120px;">45.000đ</span>
+        <span style="width:90px;">Phần</span>
+        <span style="width:120px;">
+          <input type="number" class="form-control form-control-sm d-inline-block" value="1" min="1" style="width:70px;">
+        </span>
+        <span style="width:80px;">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </span>
+      </div>
+      <!-- Món ăn 2 -->
+      <div class="d-flex align-items-center px-3 py-2">
+        <input type="checkbox" class="form-check-input me-3">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" alt="Khoai Tây Chiên" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
+        <span class="me-3 flex-grow-1">Khoai Tây Chiên</span>
+        <span class="ms-auto" style="width:120px;">20.000đ</span>
+        <span style="width:90px;">Phần</span>
+        <span style="width:120px;">
+          <input type="number" class="form-control form-control-sm d-inline-block" value="2" min="1" style="width:70px;">
+        </span>
+        <span style="width:80px;">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </span>
+      </div>
+    </div>
+  </div>
+  <!-- Quán ăn 2 -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body p-0">
+      <div class="d-flex align-items-center bg-light px-3 py-2 border-bottom fw-bold">
+        <input type="checkbox" class="form-check-input me-3">
+        <span class="me-3 fs-5">Bún Bò Huế 123</span>
+        <span class="me-3" style="width:70px;"></span><!-- Cột hình ảnh trống ở header -->
+        <span class="ms-auto d-none d-md-block" style="width:120px;">Đơn giá</span>
+        <span class="d-none d-md-block" style="width:90px;">Đơn vị</span>
+        <span class="d-none d-md-block" style="width:120px;">Số lượng</span>
+        <span class="d-none d-md-block" style="width:80px;">Thao tác</span>
+      </div>
+      <div class="d-flex align-items-center px-3 py-2">
+        <input type="checkbox" class="form-check-input me-3">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" alt="Bún Bò Huế Đặc Biệt" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
+        <span class="me-3 flex-grow-1">Bún Bò Huế Đặc Biệt</span>
+        <span class="ms-auto" style="width:120px;">50.000đ</span>
+        <span style="width:90px;">Tô</span>
+        <span style="width:120px;">
+          <input type="number" class="form-control form-control-sm d-inline-block" value="1" min="1" style="width:70px;">
+        </span>
+        <span style="width:80px;">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Bar: Tổng tiền và nút đặt hàng -->
+<div class="bg-white border-top shadow-lg py-3 px-3 position-fixed bottom-0 start-0 w-100" style="z-index:1050;">
+  <div class="container d-flex justify-content-between align-items-center">
+    <div class="fs-5 fw-bold">
+      Tổng tiền: <span class="text-danger fs-4">115.000đ</span>
+    </div>
+    <button class="btn btn-warning btn-lg px-4 fw-bold">
+      Đặt hàng
+    </button>
+  </div>
+</div>
+
+<style>
+  body {
+    padding-bottom: 80px !important;
+  }
+</style>
+
+{% endblock %}

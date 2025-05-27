@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<!-- PHẦN 1: Thông tin nhà hàng -->
+<div class="card shadow-sm p-4 mb-4 border-0 rounded bg-light">
+  <div class="row align-items-center">
+    <!-- Ảnh minh họa nhà hàng -->
+    <div class="col-md-2 text-center mb-3 mb-md-0">
+      <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+           class="rounded-circle border"
+           alt="Ảnh nhà hàng"
+           style="width: 90px; height: 90px; object-fit: cover;">
+    </div>
+    <!-- Thông tin nhà hàng -->
+    <div class="col-md-7">
+      <h3 class="fw-bold text-dark mb-2">Nhà hàng Gà Rán Leo</h3>
+      <div class="mb-2"><strong>Địa chỉ:</strong> 123 Đường Số 5, Quận 10</div>
+      <div class="mb-2"><strong>Thời gian vận chuyển:</strong> 30 - 40 phút</div>
+      <div><strong>Phí vận chuyển:</strong> 15.000đ</div>
+    </div>
+    <!-- Số lượng món ăn, đánh giá -->
+    <div class="col-md-3 text-md-end mt-3 mt-md-0">
+      <div class="mb-2"><strong>Số món ăn:</strong> 3</div>
+      <div>
+        <span class="text-warning fs-5">
+          <i class="fas fa-star"></i>
+          <i class="fas fa-star"></i>
+          <i class="fas fa-star"></i>
+          <i class="fas fa-star"></i>
+          <i class="far fa-star"></i>
+        </span>
+        <span class="ms-2">123 đánh giá</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mô tả nhà hàng -->
+<div class="mb-4">
+  <div class="bg-white rounded shadow-sm p-4 border">
+    <h5 class="mb-3 text-secondary fw-bold">
+      <i class="fas fa-info-circle me-2"></i>Mô tả nhà hàng
+    </h5>
+    <div class="text-dark" style="line-height:1.7;">
+      Nhà hàng Gà Rán Leo nổi tiếng với các món gà rán giòn cay, phục vụ nhanh chóng, không gian sạch sẽ và thân thiện.<br>
+      Thực đơn đa dạng, giá cả hợp lý, phù hợp cho mọi lứa tuổi.
+    </div>
+  </div>
+</div>
+
+<!-- PHẦN 2: Danh sách món ăn -->
+<h4 class="mb-3 fw-bold text-dark">Danh sách món ăn</h4>
+<div class="list-group list-group-custom">
+  <!-- Món ăn 1 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+         class="me-3 rounded" style="width: 90px; height: 90px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-2 fw-bold">Gà Rán Giòn Cay</h5>
+        <div class="d-flex flex-wrap gap-4">
+          <span class="fw-semibold">Giá: <span class="text-danger">45.000đ</span></span>
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+  <!-- Món ăn 2 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+         class="me-3 rounded" style="width: 90px; height: 90px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-2 fw-bold">Bún Bò Huế Đặc Biệt</h5>
+        <div class="d-flex flex-wrap gap-4">
+          <span class="fw-semibold">Giá: <span class="text-danger">50.000đ</span></span>
+          <span>Đánh giá: <span class="text-warning">★★★★★</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+  <!-- Món ăn 3 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+         class="me-3 rounded" style="width: 90px; height: 90px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-2 fw-bold">Trà Sữa Trân Châu Đường Đen</h5>
+        <div class="d-flex flex-wrap gap-4">
+          <span class="fw-semibold">Giá: <span class="text-danger">32.000đ</span></span>
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<!-- Danh sách nhà hàng -->
+<h4 class="mb-3">Danh sách nhà hàng</h4>
+<div class="list-group list-group-custom mb-4">
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-1">Nhà hàng Gà Rán Leo</h5>
+        <div class="d-flex flex-wrap gap-3">
+          <span>Địa chỉ: 123 Đường Số 5, Quận 10</span>
+          <span>Phí vận chuyển: 15.000đ</span>
+          <span>Thời gian: 30 - 40 phút</span>
+        </div>
+      </div>
+      <a href="#" class="btn btn-warning ms-3">Chi tiết</a>
+    </div>
+  </div>
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-1">Bún Bò Huế 123</h5>
+        <div class="d-flex flex-wrap gap-3">
+          <span>Địa chỉ: 45A Phan Đình Phùng, Gò Vấp</span>
+          <span>Phí vận chuyển: 10.000đ</span>
+          <span>Thời gian: 20 - 30 phút</span>
+        </div>
+      </div>
+      <a href="#" class="btn btn-warning ms-3">Chi tiết</a>
+    </div>
+  </div>
+</div>
+
+<!-- Danh sách món ăn -->
+<h4 class="mb-3">Món ăn phổ biến</h4>
+<div class="list-group list-group-custom">
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-1">Gà Rán Giòn Cay</h5>
+        <div class="d-flex flex-wrap gap-3">
+          <span>Giá: 45.000đ</span>
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-1">Bún Bò Huế Đặc Biệt</h5>
+        <div class="d-flex flex-wrap gap-3">
+          <span>Giá: 50.000đ</span>
+          <span>Đánh giá: <span class="text-warning">★★★★★</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
+      <div class="me-3">
+        <h5 class="mb-1">Trà Sữa Trân Châu Đường Đen</h5>
+        <div class="d-flex flex-wrap gap-3">
+          <span>Giá: 32.000đ</span>
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+        </div>
+      </div>
+      <div>
+        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

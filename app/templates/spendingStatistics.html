@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<h3 class="mb-4 fw-bold text-dark">Thống kê chi tiêu</h3>
+
+<div class="card shadow-sm p-4 mb-4">
+  <div class="d-flex flex-wrap align-items-center mb-3">
+    <span class="me-3 fw-semibold">Xem theo:</span>
+    <button id="btn-day" class="btn btn-outline-warning me-2 active">Ngày</button>
+    <button id="btn-week" class="btn btn-outline-warning">Tuần</button>
+  </div>
+  <canvas id="spendingChart" height="350"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html
+
+// Tạo dữ liệu mẫu
+function getDayLabels() {
+  const labels = [];
+  const today = new Date();
+  for (let i = 30; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    labels.push(d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }));
+  }
+  return labels;
+}
+function getWeekLabels() {
+  const labels = [];
+  const today = new Date();
+  for (let i = 51; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i * 7);
+    const week = d.getWeekNumber();
+    labels.push('Tuần ' + week + '/' + d.getFullYear());
+  }
+  return labels;
+}
+// Helper để lấy số tuần trong năm
+Date.prototype.getWeekNumber = function(){
+  var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+  var dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
+};
+
+function randomData(length, min, max) {
+  return Array.from({length}, () => Math.floor(Math.random() * (max - min + 1)) + min);
+}
+
+let dayLabels = getDayLabels();
+let weekLabels = getWeekLabels();
+let dayData = randomData(31, 50000, 500000);
+let weekData = randomData(52, 300000, 3000000);
+
+const ctx = document.getElementById('spendingChart').getContext('2d');
+let chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: dayLabels,
+    datasets: [{
+      label: 'Số tiền chi tiêu (VNĐ)',
+      data: dayData,
+      borderColor: '#ffc107',
+      backgroundColor: 'rgba(255, 193, 7, 0.2)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 3,
+      pointBackgroundColor: '#ffc107'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return context.dataset.label + ': ' + context.parsed.y.toLocaleString('vi-VN') + 'đ';
+          }
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Thời gian' } },
+      y: { title: { display: true, text: 'Số tiền (VNĐ)' }, beginAtZero: true }
+    }
+  }
+});
+
+document.getElementById('btn-day').onclick = function() {
+  this.classList.add('active');
+  document.getElementById('btn-week').classList.remove('active');
+  chart.data.labels = dayLabels;
+  chart.data.datasets[0].data = dayData;
+  chart.update();
+};
+document.getElementById('btn-week').onclick = function() {
+  this.classList.add('active');
+  document.getElementById('btn-day').classList.remove('active');
+  chart.data.labels = weekLabels;
+  chart.data.datasets[0].data = weekData;
+  chart.update();
+};
+</script>
+
+<style>
+/* filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html */
+#btn-day.active, #btn-week.active {
+  color: #fff;
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+</style>
+
+{% endblock %}

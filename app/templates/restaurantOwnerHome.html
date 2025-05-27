@@ -1,0 +1,275 @@
+{% extends "base2.html" %}
+{% load static %}
+{% block content %}
+
+<!-- PHẦN 1: Thông tin nhà hàng và mô tả -->
+<div class="card shadow-sm p-4 mb-4 border-0 rounded bg-light">
+  <div class="row align-items-center">
+    <!-- Ảnh minh họa nhà hàng -->
+    <div class="col-md-2 text-center mb-3 mb-md-0">
+      <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+           class="rounded-circle border"
+           alt="Ảnh nhà hàng"
+           style="width: 90px; height: 90px; object-fit: cover;">
+    </div>
+    <!-- Thông tin nhà hàng -->
+    <div class="col-md-7">
+      <h3 class="fw-bold text-dark mb-2">Nhà hàng Gà Rán Leo</h3>
+      <div class="mb-2"><strong>Địa chỉ:</strong> 123 Đường Số 5, Quận 10</div>
+      <div class="mb-2"><strong>Thời gian vận chuyển:</strong> 30 - 40 phút</div>
+      <div><strong>Phí vận chuyển:</strong> 15.000đ</div>
+    </div>
+    <!-- Nút thông tin nhà hàng và thêm món ăn -->
+    <div class="col-md-3 text-md-end mt-3 mt-md-0">
+      <button class="btn btn-outline-info mb-2" type="button">
+        <i class="fas fa-info-circle"></i> Thông tin nhà hàng
+      </button>
+      <br>
+      <button class="btn btn-success" id="add-dish-btn"><i class="fas fa-plus"></i> Thêm món ăn</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mô tả nhà hàng -->
+<div class="mb-4">
+  <div class="bg-white rounded shadow-sm p-4 border">
+    <h5 class="mb-3 text-secondary fw-bold">
+      <i class="fas fa-info-circle me-2"></i>Mô tả nhà hàng
+    </h5>
+    <div class="text-dark" style="line-height:1.7;">
+      Nhà hàng Gà Rán Leo nổi tiếng với các món gà rán giòn cay, phục vụ nhanh chóng, không gian sạch sẽ và thân thiện.<br>
+      Thực đơn đa dạng, giá cả hợp lý, phù hợp cho mọi lứa tuổi.
+    </div>
+  </div>
+</div>
+
+<!-- PHẦN 2: Danh sách món ăn -->
+<h4 class="mb-3 fw-bold text-dark">Danh sách món ăn</h4>
+<div class="list-group list-group-custom" id="dish-list">
+  <!-- Món ăn 1 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2" id="dish-item-1">
+    <!-- Ảnh món ăn (chỉnh sửa được) -->
+    <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+      <div class="me-3 d-flex flex-column align-items-center">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover;">
+        <input type="file" class="form-control form-control-sm" style="width:120px;">
+      </div>
+      <div class="me-3 flex-grow-1">
+        <div class="mb-2">
+          <input type="text" class="form-control fw-bold mb-1" value="Gà Rán Giòn Cay">
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+          <div>
+            <span class="fw-semibold">Giá:</span>
+            <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="45000">
+          </div>
+          <div>
+            <span class="fw-semibold">Đơn vị:</span>
+            <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="Phần">
+          </div>
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" rows="2">Gà rán giòn cay đặc biệt, lớp vỏ giòn rụm, vị cay nhẹ.</textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-4 align-items-center">
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+          <span>Số đánh giá: <span class="fw-bold">45</span></span>
+          <span>Số lượng mua: <span class="fw-bold">120</span></span>
+        </div>
+      </div>
+      <div class="d-flex flex-column gap-2 align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm mb-1"><i class="fas fa-save"></i> Lưu</button>
+        <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Xóa</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="toggle-review-btn">
+          <i class="fas fa-comments"></i> Xem đánh giá
+        </button>
+      </div>
+    </form>
+    <!-- Danh sách đánh giá (ẩn/hiện) -->
+    <div id="review-list-1" class="mt-3 w-100" style="display:none;">
+      <div class="list-group">
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span class="fw-semibold"><i class="fas fa-user"></i> 0901 234 567</span>
+            <span class="text-warning">★★★★☆</span>
+          </div>
+          <div class="small text-muted mb-1">10:30 01/06/2024 - 123 Đường Số 5, Quận 10</div>
+          <div>Gà rán rất ngon, giao hàng nhanh, sẽ ủng hộ tiếp!</div>
+        </div>
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span class="fw-semibold"><i class="fas fa-user"></i> 0902 345 678</span>
+            <span class="text-warning">★★★☆☆</span>
+          </div>
+          <div class="small text-muted mb-1">15:20 30/05/2024 - 45A Phan Đình Phùng, Gò Vấp</div>
+          <div>Món ăn ổn, nhưng giao hơi chậm.</div>
+        </div>
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span class="fw-semibold"><i class="fas fa-user"></i> 0903 456 789</span>
+            <span class="text-warning">★★★★★</span>
+          </div>
+          <div class="small text-muted mb-1">18:45 28/05/2024 - 99 Lê Lợi, Quận 1</div>
+          <div>Tuyệt vời! Đồ ăn nóng hổi, chất lượng tốt.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Món ăn 2 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
+    <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+      <div class="me-3 d-flex flex-column align-items-center">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover;">
+        <input type="file" class="form-control form-control-sm" style="width:120px;">
+      </div>
+      <div class="me-3 flex-grow-1">
+        <div class="mb-2">
+          <input type="text" class="form-control fw-bold mb-1" value="Bún Bò Huế Đặc Biệt">
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+          <div>
+            <span class="fw-semibold">Giá:</span>
+            <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="50000">
+          </div>
+          <div>
+            <span class="fw-semibold">Đơn vị:</span>
+            <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="Tô">
+          </div>
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" rows="2">Bún bò Huế thơm ngon, nước dùng đậm đà, thịt bò mềm.</textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-4 align-items-center">
+          <span>Đánh giá: <span class="text-warning">★★★★★</span></span>
+          <span>Số đánh giá: <span class="fw-bold">60</span></span>
+          <span>Số lượng mua: <span class="fw-bold">200</span></span>
+        </div>
+      </div>
+      <div class="d-flex flex-column gap-2 align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm mb-1"><i class="fas fa-save"></i> Lưu</button>
+        <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Xóa</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2">
+          <i class="fas fa-comments"></i> Xem đánh giá
+        </button>
+      </div>
+    </form>
+  </div>
+  <!-- Món ăn 3 -->
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
+    <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+      <div class="me-3 d-flex flex-column align-items-center">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover;">
+        <input type="file" class="form-control form-control-sm" style="width:120px;">
+      </div>
+      <div class="me-3 flex-grow-1">
+        <div class="mb-2">
+          <input type="text" class="form-control fw-bold mb-1" value="Trà Sữa Trân Châu Đường Đen">
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+          <div>
+            <span class="fw-semibold">Giá:</span>
+            <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="32000">
+          </div>
+          <div>
+            <span class="fw-semibold">Đơn vị:</span>
+            <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="Ly">
+          </div>
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" rows="2">Trà sữa thơm béo, trân châu mềm dai, vị đường đen ngọt dịu.</textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-4 align-items-center">
+          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+          <span>Số đánh giá: <span class="fw-bold">30</span></span>
+          <span>Số lượng mua: <span class="fw-bold">90</span></span>
+        </div>
+      </div>
+      <div class="d-flex flex-column gap-2 align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm mb-1"><i class="fas fa-save"></i> Lưu</button>
+        <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Xóa</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2">
+          <i class="fas fa-comments"></i> Xem đánh giá
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Sự kiện ẩn/hiện đánh giá cho món ăn đầu tiên
+  document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('toggle-review-btn');
+    var reviewList = document.getElementById('review-list-1');
+    if (btn && reviewList) {
+      btn.addEventListener('click', function() {
+        if (reviewList.style.display === 'none') {
+          reviewList.style.display = 'block';
+          btn.innerHTML = '<i class="fas fa-comments"></i> Ẩn đánh giá';
+        } else {
+          reviewList.style.display = 'none';
+          btn.innerHTML = '<i class="fas fa-comments"></i> Xem đánh giá';
+        }
+      });
+    }
+
+    // Thêm món ăn mới (item trống)
+    var addDishBtn = document.getElementById('add-dish-btn');
+    var dishList = document.getElementById('dish-list');
+    if (addDishBtn && dishList) {
+      addDishBtn.addEventListener('click', function() {
+        var newItem = document.createElement('div');
+        newItem.className = 'list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2';
+        newItem.innerHTML = `
+          <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+            <div class="me-3 d-flex flex-column align-items-center">
+              <img src="" class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover; background:#eee;">
+              <input type="file" class="form-control form-control-sm" style="width:120px;">
+            </div>
+            <div class="me-3 flex-grow-1">
+              <div class="mb-2">
+                <input type="text" class="form-control fw-bold mb-1" value="">
+              </div>
+              <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+                <div>
+                  <span class="fw-semibold">Giá:</span>
+                  <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="">
+                </div>
+                <div>
+                  <span class="fw-semibold">Đơn vị:</span>
+                  <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="">
+                </div>
+              </div>
+              <div class="mb-2">
+                <textarea class="form-control" rows="2"></textarea>
+              </div>
+              <div class="d-flex flex-wrap gap-4 align-items-center">
+                <span>Đánh giá: <span class="text-warning"></span></span>
+                <span>Số đánh giá: <span class="fw-bold"></span></span>
+                <span>Số lượng mua: <span class="fw-bold"></span></span>
+              </div>
+            </div>
+            <div class="d-flex flex-column gap-2 align-items-end">
+              <button type="submit" class="btn btn-success btn-sm mb-1"><i class="fas fa-plus"></i> Thêm</button>
+              <button type="button" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Hủy</button>
+            </div>
+          </form>
+        `;
+        dishList.insertBefore(newItem, dishList.firstChild);
+
+        // Xử lý nút Hủy: xóa item mới khỏi danh sách
+        var cancelBtn = newItem.querySelector('.btn-secondary');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            newItem.remove();
+          });
+        }
+      });
+    }
+  });
+</script>
+
+{% endblock %}
