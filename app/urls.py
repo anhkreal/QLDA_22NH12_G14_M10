@@ -26,5 +26,6 @@ urlpatterns = [
     path('api/add-dish/', views.api_add_dish, name='api-add-dish'),
     path('api/update-dish/', views.api_update_dish, name='api-update-dish'),
     path('api/delete-dish/', views.api_delete_dish, name='api-delete-dish'),
+    path('api/dish-reviews/', views.api_dish_reviews, name='api-dish-reviews'),
 
 ]

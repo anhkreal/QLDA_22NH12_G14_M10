@@ -110,12 +110,13 @@
       <div class="d-flex flex-column gap-2 align-items-end">
         <button type="submit" class="btn btn-primary btn-sm mb-1 dish-save-btn"><i class="fas fa-save"></i> Lưu</button>
         <button type="button" class="btn btn-danger btn-sm dish-delete-btn"><i class="fas fa-trash"></i> Xóa</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm mt-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2 view-review-btn">
           <i class="fas fa-comments"></i> Xem đánh giá
         </button>
         <div class="dish-alert mt-2 d-none"></div>
       </div>
     </form>
+    <div class="review-list mt-3 w-100 d-none"></div>
   </div>
   {% endfor %}
 </div>
@@ -434,6 +435,57 @@
           }
         });
       }
+    });
+
+    // Xem đánh giá món ăn
+    document.querySelectorAll('.view-review-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var form = btn.closest('.dish-edit-form');
+        var dishId = form.getAttribute('data-dish-id');
+        var reviewDiv = form.parentElement.querySelector('.review-list');
+        if (!reviewDiv) return;
+        if (!reviewDiv.classList.contains('d-none')) {
+          reviewDiv.classList.add('d-none');
+          btn.innerHTML = '<i class="fas fa-comments"></i> Xem đánh giá';
+          return;
+        }
+        // Nếu đã có nội dung thì chỉ hiện ra
+        if (reviewDiv.dataset.loaded === "1") {
+          reviewDiv.classList.remove('d-none');
+          btn.innerHTML = '<i class="fas fa-comments"></i> Ẩn đánh giá';
+          return;
+        }
+        // Gọi API lấy đánh giá
+        reviewDiv.innerHTML = '<div class="text-secondary">Đang tải đánh giá...</div>';
+        reviewDiv.classList.remove('d-none');
+        btn.innerHTML = '<i class="fas fa-comments"></i> Ẩn đánh giá';
+        try {
+          let res = await fetch(`/api/dish-reviews/?dish_id=${dishId}`);
+          let data = await res.json();
+          if (data.success && data.reviews.length > 0) {
+            let html = '<div class="list-group">';
+            data.reviews.forEach(function(r) {
+              html += `
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <span class="fw-semibold"><i class="fas fa-user"></i> ${r.customer}</span>
+                    <span class="text-warning">${'★'.repeat(r.star)}${'☆'.repeat(5 - r.star)}</span>
+                  </div>
+                  <div class="small text-muted mb-1">${r.time} - ${r.address}</div>
+                  <div>${r.comment ? r.comment : ''}</div>
+                </div>
+              `;
+            });
+            html += '</div>';
+            reviewDiv.innerHTML = html;
+          } else {
+            reviewDiv.innerHTML = '<div class="alert alert-info mb-0">Hiện tại chưa có đánh giá về món ăn này.</div>';
+          }
+          reviewDiv.dataset.loaded = "1";
+        } catch (err) {
+          reviewDiv.innerHTML = '<div class="alert alert-danger mb-0">Không thể tải đánh giá.</div>';
+        }
+      });
     });
   });
 </script>

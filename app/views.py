@@ -5,6 +5,7 @@ import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
 import base64
+from django.utils import timezone
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -326,3 +327,32 @@ def api_delete_dish(request):
         dish.save()
         return JsonResponse({"success": True})
     return JsonResponse({"success": False, "message": "Phương thức không hợp lệ!"})
+
+@csrf_exempt
+def api_dish_reviews(request):
+    dish_id = request.GET.get('dish_id')
+    reviews = []
+    if dish_id:
+        # Lấy các dish_cart của dish này
+        dish_carts = DishCart.objects.filter(id_dish=dish_id)
+        dish_cart_ids = [dc.id for dc in dish_carts]
+        # Lấy các dish_invoice đã có id_invoice (đã đặt hàng)
+        dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+        # Lấy các đánh giá (rate) liên quan
+        for di in dish_invoices:
+            if di.id_rate:
+                rate = Rate.objects.filter(id=di.id_rate).first()
+                if rate:
+                    # Lấy thông tin khách hàng và thời gian đặt hàng
+                    customer = User.objects.filter(id=di.id_customer).first()
+                    invoice = None
+                    if di.id_invoice:
+                        invoice = Invoice.objects.filter(id=di.id_invoice).first()
+                    reviews.append({
+                        "customer": customer.phone_number if customer else "Ẩn danh",
+                        "star": rate.star,
+                        "comment": rate.comment,
+                        "time": invoice.time.strftime("%H:%M %d/%m/%Y") if invoice and invoice.time else "",
+                        "address": customer.street + ", " + customer.district if customer and customer.street and customer.district else "",
+                    })
+    return JsonResponse({"success": True, "reviews": reviews})
