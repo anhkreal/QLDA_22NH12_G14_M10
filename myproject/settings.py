@@ -76,10 +76,18 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'shopapp',            # Tên database trong XAMPP (phpMyAdmin)
+        'USER': 'root',                # Mặc định XAMPP dùng user 'root'
+        'PASSWORD': '',                # Mặc định XAMPP không có mật khẩu
+        'HOST': '127.0.0.1',           # Hoặc 'localhost'
+        'PORT': '3306',                # Port mặc định MySQL
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+        },
     }
 }
+
 
 
 # Password validation
