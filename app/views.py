@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import User
+from .models import User, Restaurant, UserRestaurant
 import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
@@ -48,11 +48,28 @@ def login(request):
             request.session['user_name'] = user.name
             request.session['user_role'] = user.role
 
-            # Điều hướng theo role
+            # Điều hướng theo role và kiểm tra thông tin bổ sung
             if user.role == 0:
-                return JsonResponse({"success": True, "redirect_url": "/customer-home/"})
+                # Khách hàng: kiểm tra district
+                if not user.district or user.district.lower() in ['none', 'null', '']:
+                    return JsonResponse({
+                        "success": True,
+                        "redirect_url": "/customer-info/",
+                        "message": "Bạn hãy thêm mới vị trí mình để sử dụng đầy đủ dịch vụ web"
+                    })
+                else:
+                    return JsonResponse({"success": True, "redirect_url": "/customer-home/"})
             elif user.role == 1:
-                return JsonResponse({"success": True, "redirect_url": "/restaurant-owner-home/"})
+                # Chủ nhà hàng: kiểm tra có nhà hàng chưa
+                has_restaurant = UserRestaurant.objects.filter(id_user=user.id).exists()
+                if not has_restaurant:
+                    return JsonResponse({
+                        "success": True,
+                        "redirect_url": "/restaurant-info/",
+                        "message": "Bạn hãy thêm mới nhà hàng của mình để sử dụng đầy đủ dịch vụ web"
+                    })
+                else:
+                    return JsonResponse({"success": True, "redirect_url": "/restaurant-owner-home/"})
             else:
                 return JsonResponse({"success": False, "message": "Tài khoản không hợp lệ!"})
         except Exception as e:
@@ -114,6 +131,12 @@ def restaurant_order_history(request):
 
 def revenue_statistics(request):
     return render(request, 'revenueStatistics.html')
+
+def restaurant_info(request):
+    return render(request, 'restaurantInfo.html')
+
+def restaurant_owner_info(request):
+    return render(request, 'restaurantOwnerInfo.html')
 
 @csrf_exempt
 def logout(request):

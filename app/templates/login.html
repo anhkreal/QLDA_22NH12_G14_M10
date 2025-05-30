@@ -67,12 +67,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       let data = await res.json();
       if (data.success) {
-        alertBox.textContent = "Đăng nhập thành công!";
+        alertBox.textContent = data.message || "Đăng nhập thành công!";
         alertBox.className = "alert alert-success";
         alertBox.classList.remove('d-none');
         setTimeout(function() {
           window.location.href = data.redirect_url;
-        }, 1000);
+        }, 1500);
       } else {
         alertBox.textContent = data.message || "Đăng nhập thất bại!";
         alertBox.className = "alert alert-danger";
