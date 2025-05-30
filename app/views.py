@@ -30,7 +30,34 @@ def change_password(request):
     return render(request, 'changePassword.html')
 
 def login(request):
-    return render(request, 'login.html')
+    if request.method == "POST" and request.headers.get("Content-Type") == "application/json":
+        try:
+            data = json.loads(request.body)
+            email = data.get("email", "").strip()
+            password = data.get("password", "")
+            if not email or not password:
+                return JsonResponse({"success": False, "message": "Vui lòng nhập đầy đủ thông tin!"})
+
+            user = User.objects.filter(email=email, password=password, is_deleted=False).first()
+            if not user:
+                return JsonResponse({"success": False, "message": "Email hoặc mật khẩu không đúng!"})
+
+            # Lưu thông tin đăng nhập vào session
+            request.session['user_id'] = user.id
+            request.session['user_name'] = user.name
+            request.session['user_role'] = user.role
+
+            # Điều hướng theo role
+            if user.role == 0:
+                return JsonResponse({"success": True, "redirect_url": "/customer-home/"})
+            elif user.role == 1:
+                return JsonResponse({"success": True, "redirect_url": "/restaurant-owner-home/"})
+            else:
+                return JsonResponse({"success": False, "message": "Tài khoản không hợp lệ!"})
+        except Exception as e:
+            return JsonResponse({"success": False, "message": "Đăng nhập thất bại!"})
+    else:
+        return render(request, 'login.html')
 
 def register(request):
     if request.method == "POST" and request.headers.get("Content-Type") == "application/json":

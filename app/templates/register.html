@@ -6,6 +6,8 @@
   <div class="col-md-6 col-lg-5">
     <div class="card shadow-sm p-4">
       <h3 class="mb-4 text-center text-warning"><i class="fas fa-user-plus me-2"></i>Đăng ký tài khoản</h3>
+      <!-- Thông báo Bootstrap -->
+      <div id="register-alert" class="alert d-none" role="alert"></div>
       <form id="register-form" method="post" autocomplete="off">
         {% csrf_token %}
         <div class="mb-3">
@@ -48,13 +50,14 @@
 <script>
 // filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\register.html
 document.addEventListener('DOMContentLoaded', function() {
-  // Chuyển sang giao diện đăng nhập khi nhấn "Đăng nhập tại đây"
+  var alertBox = document.getElementById('register-alert');
+  var msg = document.getElementById('register-message');
+
   document.getElementById('login-link').onclick = function(e) {
     e.preventDefault();
     window.location.href = "{% url 'login' %}";
   };
 
-  // Xử lý đăng ký
   document.getElementById('register-form').onsubmit = async function(e) {
     e.preventDefault();
     var name = document.getElementById('name').value.trim();
@@ -63,16 +66,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var password = document.getElementById('password').value;
     var confirm_password = document.getElementById('confirm_password').value;
     var role = document.getElementById('role').value;
-    var msg = document.getElementById('register-message');
     msg.textContent = '';
+    alertBox.classList.add('d-none');
+    alertBox.classList.remove('alert-success', 'alert-danger');
 
     // Kiểm tra nhập đủ
     if (!name || !email || !phone || !password || !confirm_password) {
-      msg.textContent = "Vui lòng nhập đầy đủ thông tin!";
+      alertBox.textContent = "Vui lòng nhập đầy đủ thông tin!";
+      alertBox.className = "alert alert-danger";
+      alertBox.classList.remove('d-none');
       return;
     }
     if (password !== confirm_password) {
-      msg.textContent = "Mật khẩu nhập lại không khớp!";
+      alertBox.textContent = "Mật khẩu nhập lại không khớp!";
+      alertBox.className = "alert alert-danger";
+      alertBox.classList.remove('d-none');
       return;
     }
 
@@ -94,13 +102,21 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       let data = await res.json();
       if (data.success) {
-        alert("Đăng ký thành công! Vui lòng đăng nhập.");
-        window.location.href = "{% url 'login' %}";
+        alertBox.textContent = "Đăng ký thành công! Vui lòng đăng nhập.";
+        alertBox.className = "alert alert-success";
+        alertBox.classList.remove('d-none');
+        setTimeout(function() {
+          window.location.href = "{% url 'login' %}";
+        }, 1200);
       } else {
-        msg.textContent = data.message || "Đăng ký thất bại!";
+        alertBox.textContent = data.message || "Đăng ký thất bại!";
+        alertBox.className = "alert alert-danger";
+        alertBox.classList.remove('d-none');
       }
     } catch (err) {
-      msg.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+      alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+      alertBox.className = "alert alert-danger";
+      alertBox.classList.remove('d-none');
     }
   };
 });
