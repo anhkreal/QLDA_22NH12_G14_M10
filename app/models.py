@@ -94,3 +94,13 @@ class User(models.Model):
         db_table = 'user'
         managed = False
 
+
+class UserRestaurant(models.Model):
+    id = models.CharField(primary_key=True, max_length=100)
+    id_user = models.CharField(max_length=100)
+    id_restaurant = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'user_restaurant'
+        managed = False
+
