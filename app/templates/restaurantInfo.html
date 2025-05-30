@@ -1,4 +1,5 @@
 {% extends "base2.html" %}
+{% load custom_filters %}
 {% load static %}
 {% block content %}
 
@@ -6,10 +7,13 @@
   <div class="col-md-8 col-lg-7">
     <div class="card shadow-sm p-4">
       <h3 class="mb-4 text-center text-info"><i class="fas fa-store me-2"></i>Thông tin nhà hàng</h3>
-      <form>
+      <!-- Thông báo -->
+      <div id="restaurant-alert" class="alert d-none" role="alert"></div>
+      <form id="restaurant-form" enctype="multipart/form-data" autocomplete="off">
+        {% csrf_token %}
         <div class="mb-4 text-center">
           <img id="restaurant-img-preview"
-               src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+               src="{% if restaurant and restaurant.image %}data:image/jpeg;base64,{{ restaurant.image|b64encode }}{% else %}https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg{% endif %}"
                class="rounded-circle border mb-2"
                alt="Ảnh nhà hàng"
                style="width: 110px; height: 110px; object-fit: cover;">
@@ -19,31 +23,32 @@
         </div>
         <div class="mb-3">
           <label for="name" class="form-label">Tên nhà hàng</label>
-          <input type="text" class="form-control" id="name" value="Nhà hàng Gà Rán Leo">
+          <input type="text" class="form-control" id="name" value="{% if restaurant %}{{ restaurant.name }}{% endif %}">
         </div>
         <div class="mb-3">
           <label for="street" class="form-label">Tên đường</label>
-          <input type="text" class="form-control" id="street" value="123 Đường Số 5">
+          <input type="text" class="form-control" id="street" value="{% if restaurant %}{{ restaurant.street }}{% endif %}">
         </div>
         <div class="mb-3">
           <label for="district" class="form-label">Quận</label>
           <select class="form-select" id="district">
-            <option>Hải Châu</option>
-            <option>Thanh Khê</option>
-            <option>Sơn Trà</option>
-            <option>Ngũ Hành Sơn</option>
-            <option selected>Liên Chiểu</option>
-            <option>Cẩm Lệ</option>
-            <option>Hòa Vang</option>
-            <option>Hoàng Sa</option>
+            <option {% if restaurant and restaurant.district == "Hải Châu" %}selected{% endif %}>Hải Châu</option>
+            <option {% if restaurant and restaurant.district == "Thanh Khê" %}selected{% endif %}>Thanh Khê</option>
+            <option {% if restaurant and restaurant.district == "Sơn Trà" %}selected{% endif %}>Sơn Trà</option>
+            <option {% if restaurant and restaurant.district == "Ngũ Hành Sơn" %}selected{% endif %}>Ngũ Hành Sơn</option>
+            <option {% if restaurant and restaurant.district == "Liên Chiểu" %}selected{% endif %}>Liên Chiểu</option>
+            <option {% if restaurant and restaurant.district == "Cẩm Lệ" %}selected{% endif %}>Cẩm Lệ</option>
+            <option {% if restaurant and restaurant.district == "Hòa Vang" %}selected{% endif %}>Hòa Vang</option>
+            <option {% if restaurant and restaurant.district == "Hoàng Sa" %}selected{% endif %}>Hoàng Sa</option>
           </select>
         </div>
         <div class="mb-3">
           <label for="description" class="form-label">Mô tả nhà hàng</label>
-          <textarea class="form-control" id="description" rows="4">Nhà hàng Gà Rán Leo nổi tiếng với các món gà rán giòn cay, phục vụ nhanh chóng, không gian sạch sẽ và thân thiện.
-Thực đơn đa dạng, giá cả hợp lý, phù hợp cho mọi lứa tuổi.</textarea>
+          <textarea class="form-control" id="description" rows="4">{% if restaurant %}{{ restaurant.decription }}{% endif %}</textarea>
         </div>
-        <button type="submit" class="btn btn-info w-100 fw-bold text-white">Lưu</button>
+        <button type="submit" class="btn btn-info w-100 fw-bold text-white" id="restaurant-action-btn">
+          {% if restaurant %}Cập nhật{% else %}Thêm mới{% endif %}
+        </button>
       </form>
     </div>
   </div>
@@ -54,6 +59,10 @@ Thực đơn đa dạng, giá cả hợp lý, phù hợp cho mọi lứa tuổi.
 document.addEventListener('DOMContentLoaded', function() {
   var imgInput = document.getElementById('restaurant-img-upload');
   var imgPreview = document.getElementById('restaurant-img-preview');
+  var form = document.getElementById('restaurant-form');
+  var alertBox = document.getElementById('restaurant-alert');
+  var actionBtn = document.getElementById('restaurant-action-btn');
+
   if (imgInput && imgPreview) {
     imgInput.addEventListener('change', function(e) {
       if (this.files && this.files[0]) {
@@ -65,6 +74,64 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  form.onsubmit = async function(e) {
+    e.preventDefault();
+    alertBox.classList.add('d-none');
+    alertBox.classList.remove('alert-success', 'alert-danger');
+
+    var name = document.getElementById('name').value.trim();
+    var street = document.getElementById('street').value.trim();
+    var district = document.getElementById('district').value;
+    var description = document.getElementById('description').value.trim();
+    var imageFile = imgInput.files[0];
+
+    if (!name || !street || !district || !description) {
+      alertBox.textContent = "Vui lòng nhập đầy đủ thông tin!";
+      alertBox.className = "alert alert-danger";
+      alertBox.classList.remove('d-none');
+      return;
+    }
+
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('street', street);
+    formData.append('district', district);
+    formData.append('description', description);
+    if (imageFile) formData.append('image', imageFile);
+
+    // Thêm mới hay cập nhật
+    var isUpdate = "{{ restaurant|yesno:'1,0' }}" === "1";
+    formData.append('action', isUpdate ? 'update' : 'add');
+
+    // Gửi AJAX POST
+    try {
+      let res = await fetch(window.location.pathname, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: formData
+      });
+      let data = await res.json();
+      if (data.success) {
+        alertBox.textContent = data.message || (isUpdate ? "Cập nhật thành công!" : "Thêm mới thành công!");
+        alertBox.className = "alert alert-success";
+        alertBox.classList.remove('d-none');
+        setTimeout(function() {
+          window.location.reload();
+        }, 1200);
+      } else {
+        alertBox.textContent = data.message || "Thao tác thất bại!";
+        alertBox.className = "alert alert-danger";
+        alertBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+      alertBox.className = "alert alert-danger";
+      alertBox.classList.remove('d-none');
+    }
+  };
 });
 </script>
 

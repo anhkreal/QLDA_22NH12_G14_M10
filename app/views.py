@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import User, Restaurant, UserRestaurant
+from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate
 import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
+import base64
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -118,7 +119,48 @@ def customer_info(request):
     return render(request, 'customerInfo.html')
 
 def restaurant_owner_home(request):
-    return render(request, 'restaurantOwnerHome.html')
+    user_id = request.session.get('user_id')
+    context = {}
+
+    # Truy vấn user_restaurant
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        context['restaurant'] = None
+        context['dishes'] = []
+        context['restaurant_message'] = "Bạn cần thêm mới nhà hàng để được sử dụng đầy đủ dịch vụ"
+    else:
+        # Lấy thông tin nhà hàng
+        restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
+        context['restaurant'] = restaurant
+
+        # Lấy danh sách món ăn của nhà hàng
+        dishes = Dish.objects.filter(id_restaurant=restaurant.id)
+        dish_list = []
+        for dish in dishes:
+            # Truy vấn dish_cart cho từng dish
+            dish_carts = DishCart.objects.filter(id_dish=dish.id)
+            # Tính tổng số lượng mua
+            total_quantity = sum(dc.quantity or 0 for dc in dish_carts)
+            # Truy vấn dish_invoice cho từng dish_cart
+            dish_cart_ids = [dc.id for dc in dish_carts]
+            dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+            # Đếm số lượng đánh giá và tính trung bình sao
+            rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
+            rates = Rate.objects.filter(id__in=rate_ids)
+            num_ratings = rates.count()
+            avg_rating = round(sum(r.star for r in rates) / num_ratings, 2) if num_ratings > 0 else None
+
+            dish_list.append({
+                'dish': dish,
+                'total_quantity': total_quantity,
+                'num_ratings': num_ratings,
+                'avg_rating': avg_rating,
+            })
+        context['dishes'] = dish_list
+        if not dish_list:
+            context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
+
+    return render(request, 'restaurantOwnerHome.html', context)
 
 def restaurant_pending_order(request):
     return render(request, 'restaurantPendingOrder.html')
@@ -133,7 +175,62 @@ def revenue_statistics(request):
     return render(request, 'revenueStatistics.html')
 
 def restaurant_info(request):
-    return render(request, 'restaurantInfo.html')
+    user_id = request.session.get('user_id')
+    context = {}
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    restaurant = None
+    if user_restaurant:
+        restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
+    context['restaurant'] = restaurant
+
+    if request.method == "POST":
+        name = request.POST.get('name', '').strip()
+        street = request.POST.get('street', '').strip()
+        district = request.POST.get('district', '').strip()
+        description = request.POST.get('description', '').strip()
+        image_file = request.FILES.get('image')
+        # Kiểm tra hợp lệ
+        if not name or not street or not district or not description:
+            return JsonResponse({"success": False, "message": "Vui lòng nhập đầy đủ thông tin!"})
+
+        # Xử lý ảnh
+        image_data = None
+        if image_file:
+            image_data = image_file.read()
+
+        if not user_restaurant:
+            # Thêm mới
+            restaurant_id = str(uuid.uuid4())
+            Restaurant.objects.create(
+                id=restaurant_id,
+                name=name,
+                street=street,
+                district=district,
+                decription=description,
+                image=image_data,
+                is_deleted=False
+            )
+            UserRestaurant.objects.create(
+                id=str(uuid.uuid4()),
+                id_user=user_id,
+                id_restaurant=restaurant_id
+            )
+            return JsonResponse({"success": True, "message": "Thêm mới thành công!"})
+        else:
+            # Cập nhật
+            restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
+            if not restaurant:
+                return JsonResponse({"success": False, "message": "Không tìm thấy nhà hàng để cập nhật!"})
+            restaurant.name = name
+            restaurant.street = street
+            restaurant.district = district
+            restaurant.decription = description
+            if image_data:
+                restaurant.image = image_data
+            restaurant.save()
+            return JsonResponse({"success": True, "message": "Cập nhật thành công!"})
+
+    return render(request, 'restaurantInfo.html', context)
 
 def restaurant_owner_info(request):
     return render(request, 'restaurantOwnerInfo.html')
