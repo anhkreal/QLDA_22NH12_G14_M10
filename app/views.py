@@ -133,8 +133,8 @@ def restaurant_owner_home(request):
         restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
         context['restaurant'] = restaurant
 
-        # Lấy danh sách món ăn của nhà hàng
-        dishes = Dish.objects.filter(id_restaurant=restaurant.id)
+        # Lấy danh sách món ăn của nhà hàng chỉ lấy is_delected=False hoặc 0
+        dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
         dish_list = []
         for dish in dishes:
             # Truy vấn dish_cart cho từng dish
@@ -242,3 +242,87 @@ def logout(request):
 
 def restaurant_owner_change_password(request):
     return render(request, 'restaurantOwnerChangePassword.html')
+
+@csrf_exempt
+def api_add_dish(request):
+    if request.method == "POST":
+        name = request.POST.get('name', '').strip()
+        price = request.POST.get('price', '').strip()
+        unit = request.POST.get('unit', '').strip()
+        decription = request.POST.get('decription', '').strip()
+        id_restaurant = request.POST.get('id_restaurant', '').strip()
+        image_file = request.FILES.get('image')
+
+        # Kiểm tra hợp lệ phía backend (bảo vệ tối thiểu)
+        if not name or not price or not unit or not decription or not id_restaurant or not image_file:
+            return JsonResponse({"success": False, "message": "Vui lòng nhập đầy đủ thông tin!"})
+        try:
+            price = int(price)
+            if price <= 0:
+                return JsonResponse({"success": False, "message": "Giá phải là số dương!"})
+        except:
+            return JsonResponse({"success": False, "message": "Giá không hợp lệ!"})
+
+        if not image_file.content_type.startswith('image/'):
+            return JsonResponse({"success": False, "message": "File không phải là ảnh!"})
+
+        image_data = image_file.read()
+        dish_id = str(uuid.uuid4())
+        Dish.objects.create(
+            id=dish_id,
+            name=name,
+            decription=decription,
+            price=price,
+            unit=unit,
+            image=image_data,
+            id_restaurant=id_restaurant,
+            is_delected=False
+        )
+        return JsonResponse({"success": True})
+    return JsonResponse({"success": False, "message": "Phương thức không hợp lệ!"})
+
+@csrf_exempt
+def api_update_dish(request):
+    if request.method == "POST":
+        dish_id = request.POST.get('id', '').strip()
+        name = request.POST.get('name', '').strip()
+        price = request.POST.get('price', '').strip()
+        unit = request.POST.get('unit', '').strip()
+        decription = request.POST.get('decription', '').strip()
+        image_file = request.FILES.get('image')
+        if not dish_id or not name or not price or not unit or not decription:
+            return JsonResponse({"success": False, "message": "Vui lòng nhập đầy đủ thông tin!"})
+        try:
+            price = int(price)
+            if price <= 0:
+                return JsonResponse({"success": False, "message": "Giá phải là số dương!"})
+        except:
+            return JsonResponse({"success": False, "message": "Giá không hợp lệ!"})
+        dish = Dish.objects.filter(id=dish_id).first()
+        if not dish:
+            return JsonResponse({"success": False, "message": "Không tìm thấy món ăn!"})
+        dish.name = name
+        dish.price = price
+        dish.unit = unit
+        dish.decription = decription
+        if image_file:
+            if not image_file.content_type.startswith('image/'):
+                return JsonResponse({"success": False, "message": "File không phải là ảnh!"})
+            dish.image = image_file.read()
+        dish.save()
+        return JsonResponse({"success": True})
+    return JsonResponse({"success": False, "message": "Phương thức không hợp lệ!"})
+
+@csrf_exempt
+def api_delete_dish(request):
+    if request.method == "POST":
+        dish_id = request.POST.get('id', '').strip()
+        if not dish_id:
+            return JsonResponse({"success": False, "message": "Thiếu id món ăn!"})
+        dish = Dish.objects.filter(id=dish_id).first()
+        if not dish:
+            return JsonResponse({"success": False, "message": "Không tìm thấy món ăn!"})
+        dish.is_delected = True
+        dish.save()
+        return JsonResponse({"success": True})
+    return JsonResponse({"success": False, "message": "Phương thức không hợp lệ!"})

@@ -62,29 +62,29 @@
 {% endif %}
 <div class="list-group list-group-custom" id="dish-list">
   {% for d in dishes %}
-  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2">
-    <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2" data-dish-id="{{ d.dish.id }}">
+    <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100 dish-edit-form" data-dish-id="{{ d.dish.id }}">
       <div class="me-3 d-flex flex-column align-items-center">
         <img src="{% if d.dish.image %}data:image/jpeg;base64,{{ d.dish.image|b64encode }}{% else %}https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg{% endif %}"
-             class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover;">
-        <input type="file" class="form-control form-control-sm" style="width:120px;">
+             class="rounded mb-2 dish-img-preview" style="width: 90px; height: 90px; object-fit: cover;">
+        <input type="file" class="form-control form-control-sm dish-img-upload" style="width:120px;" accept="image/*">
       </div>
       <div class="me-3 flex-grow-1">
         <div class="mb-2">
-          <input type="text" class="form-control fw-bold mb-1" value="{{ d.dish.name }}">
+          <input type="text" class="form-control fw-bold mb-1 dish-name" value="{{ d.dish.name }}">
         </div>
         <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
           <div>
             <span class="fw-semibold">Giá:</span>
-            <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="{{ d.dish.price }}">
+            <input type="number" class="form-control d-inline-block dish-price" style="width:100px;display:inline;" value="{{ d.dish.price }}">
           </div>
           <div>
             <span class="fw-semibold">Đơn vị:</span>
-            <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="{{ d.dish.unit }}">
+            <input type="text" class="form-control d-inline-block dish-unit" style="width:80px;display:inline;" value="{{ d.dish.unit }}">
           </div>
         </div>
         <div class="mb-2">
-          <textarea class="form-control" rows="2">{{ d.dish.decription }}</textarea>
+          <textarea class="form-control dish-desc" rows="2">{{ d.dish.decription }}</textarea>
         </div>
         <div class="d-flex flex-wrap gap-4 align-items-center">
           <span>Đánh giá:
@@ -108,11 +108,12 @@
         </div>
       </div>
       <div class="d-flex flex-column gap-2 align-items-end">
-        <button type="submit" class="btn btn-primary btn-sm mb-1"><i class="fas fa-save"></i> Lưu</button>
-        <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Xóa</button>
+        <button type="submit" class="btn btn-primary btn-sm mb-1 dish-save-btn"><i class="fas fa-save"></i> Lưu</button>
+        <button type="button" class="btn btn-danger btn-sm dish-delete-btn"><i class="fas fa-trash"></i> Xóa</button>
         <button type="button" class="btn btn-outline-secondary btn-sm mt-2">
           <i class="fas fa-comments"></i> Xem đánh giá
         </button>
+        <div class="dish-alert mt-2 d-none"></div>
       </div>
     </form>
   </div>
@@ -139,32 +140,34 @@
     // Thêm món ăn mới (item trống)
     var addDishBtn = document.getElementById('add-dish-btn');
     var dishList = document.getElementById('dish-list');
-    if (addDishBtn && dishList) {
+    var restaurantId = "{{ restaurant.id|default:'' }}";
+
+    if (addDishBtn && dishList && !addDishBtn.classList.contains('disabled')) {
       addDishBtn.addEventListener('click', function() {
         var newItem = document.createElement('div');
         newItem.className = 'list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2';
         newItem.innerHTML = `
-          <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100">
+          <form class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap w-100" enctype="multipart/form-data" autocomplete="off">
             <div class="me-3 d-flex flex-column align-items-center">
-              <img src="" class="rounded mb-2" style="width: 90px; height: 90px; object-fit: cover; background:#eee;">
-              <input type="file" class="form-control form-control-sm" style="width:120px;">
+              <img src="" class="rounded mb-2 dish-img-preview" style="width: 90px; height: 90px; object-fit: cover; background:#eee;">
+              <input type="file" class="form-control form-control-sm dish-img-upload" style="width:120px;" accept="image/*">
             </div>
             <div class="me-3 flex-grow-1">
               <div class="mb-2">
-                <input type="text" class="form-control fw-bold mb-1" value="">
+                <input type="text" class="form-control fw-bold mb-1 dish-name" placeholder="Tên món ăn" required>
               </div>
               <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
                 <div>
                   <span class="fw-semibold">Giá:</span>
-                  <input type="number" class="form-control d-inline-block" style="width:100px;display:inline;" value="">
+                  <input type="number" class="form-control d-inline-block dish-price" style="width:100px;display:inline;" placeholder="Giá" min="1" required>
                 </div>
                 <div>
                   <span class="fw-semibold">Đơn vị:</span>
-                  <input type="text" class="form-control d-inline-block" style="width:80px;display:inline;" value="">
+                  <input type="text" class="form-control d-inline-block dish-unit" style="width:80px;display:inline;" placeholder="Đơn vị" required>
                 </div>
               </div>
               <div class="mb-2">
-                <textarea class="form-control" rows="2"></textarea>
+                <textarea class="form-control dish-desc" rows="2" placeholder="Mô tả món ăn" required></textarea>
               </div>
               <div class="d-flex flex-wrap gap-4 align-items-center">
                 <span>Đánh giá: <span class="text-warning"></span></span>
@@ -175,19 +178,115 @@
             <div class="d-flex flex-column gap-2 align-items-end">
               <button type="submit" class="btn btn-success btn-sm mb-1"><i class="fas fa-plus"></i> Thêm</button>
               <button type="button" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Hủy</button>
+              <div class="dish-alert mt-2 d-none"></div>
             </div>
           </form>
         `;
         dishList.insertBefore(newItem, dishList.firstChild);
 
-        // Xử lý nút Hủy: xóa item mới khỏi danh sách
+        var form = newItem.querySelector('form');
+        var imgInput = newItem.querySelector('.dish-img-upload');
+        var imgPreview = newItem.querySelector('.dish-img-preview');
+        var alertBox = newItem.querySelector('.dish-alert');
         var cancelBtn = newItem.querySelector('.btn-secondary');
+
+        // Hiển thị ảnh chọn lên ngay, kiểm tra định dạng ảnh
+        if (imgInput && imgPreview) {
+          imgInput.addEventListener('change', function(e) {
+            var file = this.files[0];
+            if (file) {
+              if (!file.type.startsWith('image/')) {
+                alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
+                alertBox.className = "dish-alert alert alert-danger mt-2";
+                alertBox.classList.remove('d-none');
+                imgInput.value = "";
+                imgPreview.src = "";
+                return;
+              }
+              var reader = new FileReader();
+              reader.onload = function(ev) {
+                imgPreview.src = ev.target.result;
+              };
+              reader.readAsDataURL(file);
+              alertBox.classList.add('d-none');
+            }
+          });
+        }
+
+        // Hủy thêm món ăn
         if (cancelBtn) {
           cancelBtn.addEventListener('click', function(e) {
             e.preventDefault();
             newItem.remove();
           });
         }
+
+        // Thêm món ăn
+        form.onsubmit = async function(e) {
+          e.preventDefault();
+          alertBox.classList.add('d-none');
+          alertBox.classList.remove('alert-success', 'alert-danger');
+
+          var name = form.querySelector('.dish-name').value.trim();
+          var price = form.querySelector('.dish-price').value.trim();
+          var unit = form.querySelector('.dish-unit').value.trim();
+          var desc = form.querySelector('.dish-desc').value.trim();
+          var imgFile = imgInput.files[0];
+
+          if (!name || !price || !unit || !desc || !imgFile) {
+            alertBox.textContent = "Vui lòng nhập đầy đủ thông tin và chọn ảnh!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+            return;
+          }
+          if (isNaN(price) || Number(price) <= 0) {
+            alertBox.textContent = "Giá phải là số dương!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+            return;
+          }
+          if (!imgFile.type.startsWith('image/')) {
+            alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+            return;
+          }
+
+          var formData = new FormData();
+          formData.append('name', name);
+          formData.append('price', price);
+          formData.append('unit', unit);
+          formData.append('decription', desc);
+          formData.append('image', imgFile);
+          formData.append('id_restaurant', restaurantId);
+
+          try {
+            let res = await fetch('/api/add-dish/', {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+              },
+              body: formData
+            });
+            let data = await res.json();
+            if (data.success) {
+              alertBox.textContent = "Thêm món ăn thành công!";
+              alertBox.className = "dish-alert alert alert-success mt-2";
+              alertBox.classList.remove('d-none');
+              setTimeout(function() {
+                window.location.reload();
+              }, 1000);
+            } else {
+              alertBox.textContent = data.message || "Thêm món ăn thất bại!";
+              alertBox.className = "dish-alert alert alert-danger mt-2";
+              alertBox.classList.remove('d-none');
+            }
+          } catch (err) {
+            alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+          }
+        };
       });
     }
 
@@ -198,6 +297,144 @@
         window.location.href = "{% url 'restaurant-info' %}";
       });
     }
+
+    // Sự kiện lưu và xóa món ăn
+    document.querySelectorAll('.dish-edit-form').forEach(function(form) {
+      var dishId = form.getAttribute('data-dish-id');
+      var imgInput = form.querySelector('.dish-img-upload');
+      var imgPreview = form.querySelector('.dish-img-preview');
+      var alertBox = form.querySelector('.dish-alert');
+      var saveBtn = form.querySelector('.dish-save-btn');
+      var deleteBtn = form.querySelector('.dish-delete-btn');
+
+      // Hiển thị ảnh chọn lên ngay, kiểm tra định dạng ảnh
+      if (imgInput && imgPreview) {
+        imgInput.addEventListener('change', function(e) {
+          var file = this.files[0];
+          if (file) {
+            if (!file.type.startsWith('image/')) {
+              alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
+              alertBox.className = "dish-alert alert alert-danger mt-2";
+              alertBox.classList.remove('d-none');
+              imgInput.value = "";
+              imgPreview.src = "";
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+              imgPreview.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+            alertBox.classList.add('d-none');
+          }
+        });
+      }
+
+      // Lưu món ăn
+      form.onsubmit = async function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+        alertBox.classList.remove('alert-success', 'alert-danger');
+
+        var name = form.querySelector('.dish-name').value.trim();
+        var price = form.querySelector('.dish-price').value.trim();
+        var unit = form.querySelector('.dish-unit').value.trim();
+        var desc = form.querySelector('.dish-desc').value.trim();
+        var imgFile = imgInput.files[0];
+
+        if (!name || !price || !unit || !desc) {
+          alertBox.textContent = "Vui lòng nhập đầy đủ thông tin!";
+          alertBox.className = "dish-alert alert alert-danger mt-2";
+          alertBox.classList.remove('d-none');
+          return;
+        }
+        if (isNaN(price) || Number(price) <= 0) {
+          alertBox.textContent = "Giá phải là số dương!";
+          alertBox.className = "dish-alert alert alert-danger mt-2";
+          alertBox.classList.remove('d-none');
+          return;
+        }
+        if (imgFile && !imgFile.type.startsWith('image/')) {
+          alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
+          alertBox.className = "dish-alert alert alert-danger mt-2";
+          alertBox.classList.remove('d-none');
+          return;
+        }
+
+        var formData = new FormData();
+        formData.append('id', dishId);
+        formData.append('name', name);
+        formData.append('price', price);
+        formData.append('unit', unit);
+        formData.append('decription', desc);
+        if (imgFile) formData.append('image', imgFile);
+
+        try {
+          let res = await fetch('/api/update-dish/', {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: formData
+          });
+          let data = await res.json();
+          if (data.success) {
+            alertBox.textContent = "Cập nhật món ăn thành công!";
+            alertBox.className = "dish-alert alert alert-success mt-2";
+            alertBox.classList.remove('d-none');
+            setTimeout(function() {
+              window.location.reload();
+            }, 1000);
+          } else {
+            alertBox.textContent = data.message || "Cập nhật thất bại!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+          }
+        } catch (err) {
+          alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+          alertBox.className = "dish-alert alert alert-danger mt-2";
+          alertBox.classList.remove('d-none');
+        }
+      };
+
+      // Xóa món ăn (is_delected = 1)
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async function(e) {
+          e.preventDefault();
+          if (!confirm("Bạn có chắc chắn muốn xóa món ăn này?")) return;
+          alertBox.classList.add('d-none');
+          alertBox.classList.remove('alert-success', 'alert-danger');
+          var formData = new FormData();
+          formData.append('id', dishId);
+          try {
+            let res = await fetch('/api/delete-dish/', {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+              },
+              body: formData
+            });
+            let data = await res.json();
+            if (data.success) {
+              alertBox.textContent = "Xóa món ăn thành công!";
+              alertBox.className = "dish-alert alert alert-success mt-2";
+              alertBox.classList.remove('d-none');
+              setTimeout(function() {
+                window.location.reload();
+              }, 1000);
+            } else {
+              alertBox.textContent = data.message || "Xóa món ăn thất bại!";
+              alertBox.className = "dish-alert alert alert-danger mt-2";
+              alertBox.classList.remove('d-none');
+            }
+          } catch (err) {
+            alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+          }
+        });
+      }
+    });
   });
 </script>
 
