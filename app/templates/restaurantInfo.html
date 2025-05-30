@@ -1,0 +1,71 @@
+{% extends "base2.html" %}
+{% load static %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-7">
+    <div class="card shadow-sm p-4">
+      <h3 class="mb-4 text-center text-info"><i class="fas fa-store me-2"></i>Thông tin nhà hàng</h3>
+      <form>
+        <div class="mb-4 text-center">
+          <img id="restaurant-img-preview"
+               src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+               class="rounded-circle border mb-2"
+               alt="Ảnh nhà hàng"
+               style="width: 110px; height: 110px; object-fit: cover;">
+          <div>
+            <input type="file" class="form-control mt-2 w-auto mx-auto" id="restaurant-img-upload" accept="image/*">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="name" class="form-label">Tên nhà hàng</label>
+          <input type="text" class="form-control" id="name" value="Nhà hàng Gà Rán Leo">
+        </div>
+        <div class="mb-3">
+          <label for="street" class="form-label">Tên đường</label>
+          <input type="text" class="form-control" id="street" value="123 Đường Số 5">
+        </div>
+        <div class="mb-3">
+          <label for="district" class="form-label">Quận</label>
+          <select class="form-select" id="district">
+            <option>Hải Châu</option>
+            <option>Thanh Khê</option>
+            <option>Sơn Trà</option>
+            <option>Ngũ Hành Sơn</option>
+            <option selected>Quận 10</option>
+            <option>Cẩm Lệ</option>
+            <option>Hòa Vang</option>
+            <option>Hoàng Sa</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="description" class="form-label">Mô tả nhà hàng</label>
+          <textarea class="form-control" id="description" rows="4">Nhà hàng Gà Rán Leo nổi tiếng với các món gà rán giòn cay, phục vụ nhanh chóng, không gian sạch sẽ và thân thiện.
+Thực đơn đa dạng, giá cả hợp lý, phù hợp cho mọi lứa tuổi.</textarea>
+        </div>
+        <button type="submit" class="btn btn-info w-100 fw-bold text-white">Lưu</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\restaurantInfo.html
+document.addEventListener('DOMContentLoaded', function() {
+  var imgInput = document.getElementById('restaurant-img-upload');
+  var imgPreview = document.getElementById('restaurant-img-preview');
+  if (imgInput && imgPreview) {
+    imgInput.addEventListener('change', function(e) {
+      if (this.files && this.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          imgPreview.src = ev.target.result;
+        };
+        reader.readAsDataURL(this.files[0]);
+      }
+    });
+  }
+});
+</script>
+
+{% endblock %}
