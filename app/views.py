@@ -142,3 +142,6 @@ def restaurant_owner_info(request):
 def logout(request):
     request.session.flush()
     return JsonResponse({"success": True})
+
+def restaurant_owner_change_password(request):
+    return render(request, 'restaurantOwnerChangePassword.html')

@@ -88,6 +88,9 @@
     .list-group-custom .list-group-item:not(:last-child) {
       margin-bottom: 12px;
     }
+
+    .pointer-events-none { pointer-events: none !important; }
+    .disabled { opacity: 0.6 !important; }
   </style>
 </head>
 <body>
@@ -95,13 +98,21 @@
   <!-- Top Bar: Hàng 1 -->
   <div class="top-bar py-2 container-custom d-flex justify-content-between align-items-center">
     <div>
-      <a href="#" class="me-3"><i class="fas fa-clipboard-list"></i> Đơn hàng chờ xác nhận</a>
-      <a href="#" class="me-3"><i class="fas fa-shipping-fast"></i> Đơn hàng vận chuyển</a>
-      <a href="#" class="me-3"><i class="fas fa-history"></i> Lịch sử đơn hàng</a>
-      <a href="#"><i class="fas fa-chart-line"></i> Thống kê doanh thu</a>
+      <a href="{% if request.session.user_id %}{% url 'restaurant-pending-order' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
+        <i class="fas fa-clipboard-list"></i> Đơn hàng chờ xác nhận
+      </a>
+      <a href="{% if request.session.user_id %}{% url 'restaurant-shipping-order' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
+        <i class="fas fa-shipping-fast"></i> Đơn hàng vận chuyển
+      </a>
+      <a href="{% if request.session.user_id %}{% url 'restaurant-order-history' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
+        <i class="fas fa-history"></i> Lịch sử đơn hàng
+      </a>
+      <a href="{% if request.session.user_id %}{% url 'revenue-statistics' %}{% else %}#{% endif %}" class="{% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
+        <i class="fas fa-chart-line"></i> Thống kê doanh thu
+      </a>
     </div>
     <div class="dropdown">
-      <a class="dropdown-toggle" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+      <a class="dropdown-toggle {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
         <i class="fas fa-user-circle"></i>
         {% if request.session.user_name %}
           {{ request.session.user_name }}
@@ -110,11 +121,19 @@
         {% endif %}
       </a>
       <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountDropdown">
-        <li><a class="dropdown-item" href="#"><i class="fas fa-id-card"></i> Thông tin cá nhân</a></li>
-        <li><a class="dropdown-item" href="#"><i class="fas fa-key"></i> Đổi mật khẩu</a></li>
+        <li>
+          <a class="dropdown-item {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" href="{% if request.session.user_id %}{% url 'restaurant-owner-info' %}{% else %}#{% endif %}">
+            <i class="fas fa-id-card"></i> Thông tin cá nhân
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" href="#" id="change-password-link">
+            <i class="fas fa-key"></i> Đổi mật khẩu
+          </a>
+        </li>
         <li><hr class="dropdown-divider"></li>
         <li>
-          <a class="dropdown-item" href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+          <a class="dropdown-item {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
         </li>
       </ul>
     </div>
@@ -122,7 +141,9 @@
 
   <!-- Top Bar: Hàng 2 -->
   <div class="py-3 container-custom d-flex justify-content-between align-items-center">
-    <div class="logo"><i class="fas fa-store"></i> M10 Eats</div>
+    <div class="logo {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" style="cursor:pointer;" id="owner-home-link">
+      <i class="fas fa-store"></i> M10 Eats
+    </div>
     <div class="search-bar flex-grow-1 mx-3">
       <div class="input-group">
         <input type="text" class="form-control" placeholder="Tìm kiếm sản phẩm...">
@@ -166,6 +187,21 @@
           }).then(function() {
             window.location.href = "{% url 'login' %}";
           });
+        });
+      }
+      // Logo + M10 Eats về trang chủ chủ cửa hàng
+      var ownerHome = document.getElementById('owner-home-link');
+      if (ownerHome && "{{ request.session.user_id|default_if_none:'' }}") {
+        ownerHome.addEventListener('click', function() {
+          window.location.href = "{% url 'restaurant-owner-home' %}";
+        });
+      }
+      // Đổi mật khẩu chủ cửa hàng
+      var changePwd = document.getElementById('change-password-link');
+      if (changePwd && "{{ request.session.user_id|default_if_none:'' }}") {
+        changePwd.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = "{% url 'restaurant-owner-change-password' %}";
         });
       }
     });

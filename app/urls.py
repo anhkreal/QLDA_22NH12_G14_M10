@@ -21,5 +21,6 @@ urlpatterns = [
     path('logout/', views.logout, name='logout'),
     path('restaurant-info/', views.restaurant_info, name='restaurant-info'),
     path('restaurant-owner-info/', views.restaurant_owner_info, name='restaurant-owner-info'),
+    path('restaurant-owner-change-password/', views.restaurant_owner_change_password, name='restaurant-owner-change-password'),
 
 ]
