@@ -18,5 +18,6 @@ urlpatterns = [
     path('restaurant-shipping-order/', views.restaurant_shipping_order, name='restaurant-shipping-order'),
     path('restaurant-order-history/', views.restaurant_order_history, name='restaurant-order-history'),
     path('revenue-statistics/', views.revenue_statistics, name='revenue-statistics'),
+    path('logout/', views.logout, name='logout'),
 
 ]

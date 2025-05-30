@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from .models import User
 import json
 import uuid
+from django.views.decorators.csrf import csrf_exempt
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -113,3 +114,8 @@ def restaurant_order_history(request):
 
 def revenue_statistics(request):
     return render(request, 'revenueStatistics.html')
+
+@csrf_exempt
+def logout(request):
+    request.session.flush()
+    return JsonResponse({"success": True})
