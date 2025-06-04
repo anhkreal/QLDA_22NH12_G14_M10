@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate
+from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate, Invoice
 import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
@@ -21,7 +21,39 @@ def cart(request):
     return render(request, 'cart.html')
 
 def shipping_order(request):
-    return render(request, 'shippingOrder.html')
+    # Lấy danh sách đơn hàng chờ xác nhận
+    invoices = Invoice.objects.filter(status=0).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id_dish=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'invoice_id': invoice.id,
+            'customer_name': customer.name if customer else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'restaurant_name': restaurant.name if restaurant else '',
+            'restaurant_phone': '',
+            'restaurant_address': f"{restaurant.street}, {restaurant.district}" if restaurant else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'shippingOrder.html', {'orders': orders})
 
 def order_history(request):
     return render(request, 'orderHistory.html')
@@ -356,3 +388,17 @@ def api_dish_reviews(request):
                         "address": customer.street + ", " + customer.district if customer and customer.street and customer.district else "",
                     })
     return JsonResponse({"success": True, "reviews": reviews})
+
+@csrf_exempt
+def api_update_invoice_status(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        invoice_id = data.get('invoice_id')
+        status = data.get('status')
+        invoice = Invoice.objects.filter(id=invoice_id).first()
+        if invoice and status in [1, 2]:
+            invoice.status = status
+            invoice.save(update_fields=['status'])
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
+    return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
