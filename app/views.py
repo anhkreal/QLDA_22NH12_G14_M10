@@ -8,14 +8,45 @@ import base64
 from django.utils import timezone
 
 def customer_home(request):
-    return render(request, 'customerHome.html')
+    query = request.GET.get('q', '')
+    if query:
+        restaurants = Restaurant.objects.filter(name__icontains=query, is_deleted=False)
+    else:
+        restaurants = Restaurant.objects.filter(is_deleted=False)
+    return render(request, 'customerHome.html', {
+        'restaurants': restaurants,
+        'query': query
+    })
 
 
 def dish_detail(request):
     return render(request, 'dishDetails.html')
 
 def restaurant_view_details(request):
-    return render(request, 'restaurantViewDetails.html')
+    restaurant_id = request.GET.get('id')
+    restaurant = Restaurant.objects.filter(id=restaurant_id, is_deleted=False).first()
+    if not restaurant:
+        return render(request, 'restaurantViewDetails.html', {'error': 'Không tìm thấy nhà hàng.'})
+    # Lấy danh sách món ăn của nhà hàng
+    dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+    # Đếm số lượng món ăn
+    num_dishes = dishes.count()
+    # Đếm số lượng đánh giá và tính trung bình sao
+    dish_ids = [dish.id for dish in dishes]
+    dish_carts = DishCart.objects.filter(id_dish__in=dish_ids)
+    dish_cart_ids = [dc.id for dc in dish_carts]
+    dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+    rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
+    rates = Rate.objects.filter(id__in=rate_ids)
+    num_ratings = rates.count()
+    avg_rating = round(sum(r.star for r in rates) / num_ratings, 2) if num_ratings > 0 else None
+    return render(request, 'restaurantViewDetails.html', {
+        'restaurant': restaurant,
+        'dishes': dishes,
+        'num_dishes': num_dishes,
+        'num_ratings': num_ratings,
+        'avg_rating': avg_rating
+    })
 
 def cart(request):
     return render(request, 'cart.html')
@@ -356,3 +387,14 @@ def api_dish_reviews(request):
                         "address": customer.street + ", " + customer.district if customer and customer.street and customer.district else "",
                     })
     return JsonResponse({"success": True, "reviews": reviews})
+
+def restaurant_list(request):
+    query = request.GET.get('q', '')
+    if query:
+        restaurants = Restaurant.objects.filter(name__icontains=query, is_deleted=False)
+    else:
+        restaurants = Restaurant.objects.filter(is_deleted=False)
+    return render(request, 'restaurant_list.html', {
+        'restaurants': restaurants,
+        'query': query
+    })
