@@ -23,39 +23,7 @@ def cart(request):
     return render(request, 'cart.html')
 
 def shipping_order(request):
-    # Lấy danh sách đơn hàng chờ xác nhận
-    invoices = Invoice.objects.filter(status=0).order_by('-time')
-    orders = []
-    for invoice in invoices:
-        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
-        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
-        dishes = []
-        customer = None
-        for di in dish_invoices:
-            dish_cart = DishCart.objects.filter(id_dish=di.id_dish_cart).first()
-            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
-            if not customer:
-                customer = User.objects.filter(id=di.id_customer).first()
-            if dish and dish_cart:
-                dishes.append({
-                    'name': dish.name,
-                    'quantity': dish_cart.quantity,
-                    'price': dish.price,
-                    'unit': dish.unit,
-                })
-        orders.append({
-            'invoice_id': invoice.id,
-            'customer_name': customer.name if customer else '',
-            'customer_phone': customer.phone_number if customer else '',
-            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
-            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
-            'restaurant_name': restaurant.name if restaurant else '',
-            'restaurant_phone': '',
-            'restaurant_address': f"{restaurant.street}, {restaurant.district}" if restaurant else '',
-            'dishes': dishes,
-            'total_payment': invoice.total_payment,
-        })
-    return render(request, 'shippingOrder.html', {'orders': orders})
+    return render(request, 'shippingOrder.html')
 
 def order_history(request):
     return render(request, 'orderHistory.html')
