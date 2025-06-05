@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 import base64
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+import unicodedata
 
 def customer_home(request):
     query = request.GET.get('q', '')
@@ -193,9 +194,19 @@ def register(request):
 def customer_info(request):
     return render(request, 'customerInfo.html')
 
+def remove_accents(input_str):
+    if not input_str:
+        return ''
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return ''.join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
+
 def restaurant_owner_home(request):
     user_id = request.session.get('user_id')
     context = {}
+
+    # Lấy từ khóa tìm kiếm
+    query = request.GET.get('q', '').strip()
+    context['query'] = query
 
     # Truy vấn user_restaurant
     user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
@@ -209,7 +220,19 @@ def restaurant_owner_home(request):
         context['restaurant'] = restaurant
 
         # Lấy danh sách món ăn của nhà hàng chỉ lấy is_delected=False hoặc 0
-        dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+        all_dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+        # Nếu có từ khóa tìm kiếm thì lọc theo tên (không dấu, không phân biệt hoa thường)
+        if query:
+            query_no_accents = remove_accents(query)
+            filtered_dishes = []
+            for dish in all_dishes:
+                name_no_accents = remove_accents(dish.name)
+                if query_no_accents in name_no_accents:
+                    filtered_dishes.append(dish)
+            dishes = filtered_dishes
+        else:
+            dishes = list(all_dishes)
+
         dish_list = []
         for dish in dishes:
             # Truy vấn dish_cart cho từng dish
@@ -233,7 +256,10 @@ def restaurant_owner_home(request):
             })
         context['dishes'] = dish_list
         if not dish_list:
-            context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
+            if query:
+                context['dish_message'] = "Không có món ăn nào phù hợp với từ khóa tìm kiếm."
+            else:
+                context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
 
     return render(request, 'restaurantOwnerHome.html', context)
 
