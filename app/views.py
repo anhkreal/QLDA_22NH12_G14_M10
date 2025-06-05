@@ -202,7 +202,40 @@ def restaurant_shipping_order(request):
     return render(request, 'restaurantShippingOrder.html')
 
 def restaurant_order_history(request):
-    return render(request, 'restaurantOrderHistory.html')
+    user_id = request.session.get('user_id')
+    # Lấy id nhà hàng của chủ nhà hàng
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return render(request, 'restaurantOrderHistory.html', {'orders': []})
+    restaurant_id = user_restaurant.id_restaurant
+    # Lấy các hóa đơn đã hoàn tất của nhà hàng này
+    invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=2).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'customer_name': customer.name if customer else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'restaurantOrderHistory.html', {'orders': orders})
 
 def revenue_statistics(request):
     return render(request, 'revenueStatistics.html')
