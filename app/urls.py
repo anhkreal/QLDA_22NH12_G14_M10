@@ -28,5 +28,6 @@ urlpatterns = [
     path('api/delete-dish/', views.api_delete_dish, name='api-delete-dish'),
     path('api/dish-reviews/', views.api_dish_reviews, name='api-dish-reviews'),
     path('restaurants/', views.restaurant_list, name='restaurant-list'),
+    path('api/delete-cart-item/', views.api_delete_cart_item, name='api-delete-cart-item'),
 
 ]

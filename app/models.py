@@ -20,9 +20,9 @@ class Dish(models.Model):
 class DishCart(models.Model):
     id = models.CharField(primary_key=True, max_length=100)
     id_dish = models.CharField(max_length=100)
-    quantity = models.IntegerField(null=True, default=None)
+    quantity = models.IntegerField(null=True, default=1)
     note = models.CharField(max_length=100, null=True, default=None)
-    is_checked = models.BooleanField()
+    is_checked = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'dish_cart'

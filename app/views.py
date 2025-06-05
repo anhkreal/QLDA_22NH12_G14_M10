@@ -6,6 +6,7 @@ import uuid
 from django.views.decorators.csrf import csrf_exempt
 import base64
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 def customer_home(request):
     query = request.GET.get('q', '')
@@ -49,7 +50,49 @@ def restaurant_view_details(request):
     })
 
 def cart(request):
-    return render(request, 'cart.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    # Lấy các dish_cart của user (giả sử DishInvoice liên kết user với dish_cart)
+    dish_invoices = DishInvoice.objects.filter(id_customer=user_id, id_invoice__isnull=True)
+    dish_cart_ids = [di.id_dish_cart for di in dish_invoices]
+    dish_carts = DishCart.objects.filter(id__in=dish_cart_ids)
+    # Lấy thông tin món ăn và nhà hàng
+    dish_ids = [dc.id_dish for dc in dish_carts]
+    dishes = {d.id: d for d in Dish.objects.filter(id__in=dish_ids, is_delected=False)}
+    # Gộp theo nhà hàng
+    restaurant_map = {}
+    for dc in dish_carts:
+        dish = dishes.get(dc.id_dish)
+        if not dish:
+            continue
+        # Lấy nhà hàng
+        rest_id = dish.id_restaurant
+        if rest_id not in restaurant_map:
+            restaurant = Restaurant.objects.filter(id=rest_id, is_deleted=False).first()
+            if not restaurant:
+                continue
+            restaurant_map[rest_id] = {
+                'restaurant': restaurant,
+                'items': []
+            }
+        restaurant_map[rest_id]['items'].append({
+            'dish_cart': dc,
+            'dish': dish,
+            'checked': dc.is_checked,
+            'quantity': dc.quantity or 1,
+        })
+    # Tính tổng tiền các món được chọn
+    total = 0
+    for r in restaurant_map.values():
+        for item in r['items']:
+            if item['checked']:
+                total += (item['dish'].price or 0) * (item['quantity'] or 1)
+    context = {
+        'restaurants': list(restaurant_map.values()),
+        'total': total
+    }
+    return render(request, 'cart.html', context)
 
 def shipping_order(request):
     return render(request, 'shippingOrder.html')
@@ -398,3 +441,14 @@ def restaurant_list(request):
         'restaurants': restaurants,
         'query': query
     })
+
+@csrf_exempt
+@require_POST
+def api_delete_cart_item(request):
+    dish_cart_id = request.POST.get('dish_cart_id')
+    user_id = request.session.get('user_id')
+    if not dish_cart_id or not user_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin.'})
+    # Chỉ xóa dish_invoice của user hiện tại và chưa có invoice (chưa đặt hàng)
+    deleted = DishInvoice.objects.filter(id_dish_cart=dish_cart_id, id_customer=user_id, id_invoice__isnull=True).delete()
+    return JsonResponse({'success': True})
