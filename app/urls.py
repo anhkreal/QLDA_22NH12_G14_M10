@@ -17,6 +17,7 @@ urlpatterns = [
     path('restaurant-owner-home/', views.restaurant_owner_home, name='restaurant-owner-home'),
     path('restaurant-pending-order/', views.restaurant_pending_order, name='restaurant-pending-order'),
     path('restaurant-shipping-order/', views.restaurant_shipping_order, name='restaurant-shipping-order'),
+    path('restaurant-shipping-orders/', views.shipping_orders_view, name='restaurant-shipping-orders'),
     path('restaurant-order-history/', views.restaurant_order_history, name='restaurant-order-history'),
     path('revenue-statistics/', views.revenue_statistics, name='revenue-statistics'),
     path('logout/', views.logout, name='logout'),

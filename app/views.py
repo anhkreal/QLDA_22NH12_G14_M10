@@ -6,6 +6,8 @@ import uuid
 from django.views.decorators.csrf import csrf_exempt
 import base64
 from django.utils import timezone
+import MySQLdb
+from django.conf import settings
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -200,6 +202,66 @@ def restaurant_pending_order(request):
 
 def restaurant_shipping_order(request):
     return render(request, 'restaurantShippingOrder.html')
+
+def shipping_orders_view(request):
+    # Kết nối DB thủ công, không dùng ORM
+    db = MySQLdb.connect(
+        host=settings.DATABASES['default']['HOST'],
+        user=settings.DATABASES['default']['USER'],
+        passwd=settings.DATABASES['default']['PASSWORD'],
+        db=settings.DATABASES['default']['NAME'],
+        charset='utf8mb4'
+    )
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    # Lấy các đơn hàng status=1
+    cursor.execute("""
+        SELECT i.id, i.time, i.total_payment, i.id_restaurant, i.id_customer
+        FROM invoice i
+        WHERE i.status = 1
+        ORDER BY i.time ASC
+    """)
+    invoices = cursor.fetchall()
+    orders = []
+    for inv in invoices:
+        # Lấy thông tin khách hàng
+        customer = None
+        if inv['id_customer']:
+            cursor.execute("SELECT name, phone_number, street, district FROM user WHERE id=%s", (inv['id_customer'],))
+            customer = cursor.fetchone()
+        # Lấy các món ăn trong đơn
+        cursor.execute("SELECT id FROM dish_invoice WHERE id_invoice=%s", (inv['id'],))
+        dish_invoice_ids = [row['id'] for row in cursor.fetchall()]
+        items = []
+        for di_id in dish_invoice_ids:
+            cursor.execute("SELECT id_dish_cart FROM dish_invoice WHERE id=%s", (di_id,))
+            row = cursor.fetchone()
+            if not row:
+                continue
+            dish_cart_id = row['id_dish_cart']
+            cursor.execute("SELECT id_dish, quantity FROM dish_cart WHERE id=%s", (dish_cart_id,))
+            cart = cursor.fetchone()
+            if not cart:
+                continue
+            cursor.execute("SELECT name, price, unit FROM dish WHERE id=%s", (cart['id_dish'],))
+            dish = cursor.fetchone()
+            if dish:
+                items.append({
+                    'name': dish['name'],
+                    'price': dish['price'],
+                    'quantity': cart['quantity'],
+                    'unit': dish['unit'],
+                })
+        orders.append({
+            'customer_name': customer['name'] if customer else '',
+            'phone': customer['phone_number'] if customer else '',
+            'address': f"{customer['street']}, {customer['district']}" if customer else '',
+            'order_time': inv['time'].strftime('%H:%M %d/%m/%Y') if inv['time'] else '',
+            'total_payment': inv['total_payment'],
+            'items': items,
+        })
+    cursor.close()
+    db.close()
+    return render(request, 'restaurantShippingOrder.html', {'orders': orders})
 
 def restaurant_order_history(request):
     user_id = request.session.get('user_id')
