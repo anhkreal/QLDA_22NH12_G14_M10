@@ -402,3 +402,4 @@ def api_update_invoice_status(request):
             return JsonResponse({'success': True})
         return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
     return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
+// Tạo dữ liệu mẫu
