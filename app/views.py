@@ -8,6 +8,8 @@ import base64
 from django.utils import timezone
 import MySQLdb
 from django.conf import settings
+from django.contrib import messages
+from django.db import connection
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -465,3 +467,61 @@ def api_update_invoice_status(request):
             return JsonResponse({'success': True})
         return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
     return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
+
+def pending_orders_view(request):
+    orders = []
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT i.id, i.time, i.total_payment, i.id_customer
+            FROM invoice i
+            WHERE i.status = 0
+            ORDER BY i.time ASC
+        ''')
+        invoices = cursor.fetchall()
+        for inv in invoices:
+            invoice_id, order_time, total_payment, customer_id = inv
+            # Lấy thông tin khách hàng
+            customer = None
+            if customer_id:
+                cursor.execute('SELECT first_name, last_name, email FROM auth_user WHERE id = %s', [customer_id])
+                customer = cursor.fetchone()
+            # Lấy danh sách món ăn
+            cursor.execute('''
+                SELECT d.name, dc.quantity, d.price, d.unit
+                FROM dish_invoice di
+                JOIN dish_cart dc ON di.id_dish_cart = dc.id
+                JOIN dish d ON dc.id_dish = d.id
+                WHERE di.id_invoice = %s
+            ''', [invoice_id])
+            items = [
+                {
+                    'name': row[0],
+                    'quantity': row[1],
+                    'price': row[2],
+                    'unit': row[3],
+                } for row in cursor.fetchall()
+            ]
+            orders.append({
+                'invoice_id': invoice_id,
+                'customer_name': (customer[0] + ' ' + customer[1]) if customer else '',
+                'customer_phone': customer[2] if customer else '',
+                'customer_address': '',  # Nếu có trường địa chỉ thì lấy thêm
+                'order_time': order_time.strftime('%H:%M %d/%m/%Y') if order_time else '',
+                'dishes': items,
+                'total_payment': total_payment,
+            })
+    return render(request, 'restaurantPendingOrder.html', {'orders': orders})
+
+def confirm_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = 1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã xác nhận đơn hàng!')
+    return redirect('pending-orders')
+
+def reject_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = -1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã từ chối đơn hàng!')
+    return redirect('pending-orders')
