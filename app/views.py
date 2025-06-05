@@ -221,13 +221,14 @@ def restaurant_owner_home(request):
 
         # Lấy danh sách món ăn của nhà hàng chỉ lấy is_delected=False hoặc 0
         all_dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
-        # Nếu có từ khóa tìm kiếm thì lọc theo tên (không dấu, không phân biệt hoa thường)
+        # Nếu có từ khóa tìm kiếm thì lọc theo tên hoặc mô tả (không dấu, không phân biệt hoa thường)
         if query:
             query_no_accents = remove_accents(query)
             filtered_dishes = []
             for dish in all_dishes:
                 name_no_accents = remove_accents(dish.name)
-                if query_no_accents in name_no_accents:
+                desc_no_accents = remove_accents(dish.decription)
+                if query_no_accents in name_no_accents or query_no_accents in desc_no_accents:
                     filtered_dishes.append(dish)
             dishes = filtered_dishes
         else:
