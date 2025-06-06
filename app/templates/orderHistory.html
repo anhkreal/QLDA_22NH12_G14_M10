@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Lịch sử đơn hàng{% endblock %}
+{% block content %}
+
+<!-- Đơn hàng đã đặt -->
+<div class="card mb-4 shadow-sm border-success border-2">
+  <div class="card-body p-0">
+    <!-- Phần đầu: Thông tin nhà hàng và trạng thái -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between bg-success bg-opacity-25 px-3 py-3 border-bottom rounded-top">
+      <div>
+        <span class="fw-bold fs-5 text-dark">Nhà hàng Gà Rán Leo</span>
+        <span class="ms-3"><i class="fas fa-phone"></i> 0901 234 567</span>
+        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> 123 Đường Số 5, Quận 10</span>
+        <span class="ms-3"><i class="fas fa-clock"></i> Đặt lúc: 10:30 01/06/2024</span>
+      </div>
+      <div class="d-flex align-items-center mt-2 mt-md-0">
+        <span class="badge bg-success text-white">Hoàn tất</span>
+      </div>
+    </div>
+    <!-- Phần 2: Danh sách món ăn -->
+    <div class="p-3">
+      <!-- Món ăn 1 -->
+      <div class="d-flex align-items-center mb-2">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">Gà Rán Giòn Cay</div>
+          <div class="text-muted small">Số lượng: 2 | Đơn vị: Phần</div>
+          <!-- Đánh giá -->
+          <div class="mt-2 d-flex align-items-center">
+            <span class="me-2">Đánh giá:</span>
+            <span class="star-rating text-warning fs-5 me-2" data-rating="0">
+              <i class="far fa-star" data-value="1"></i>
+              <i class="far fa-star" data-value="2"></i>
+              <i class="far fa-star" data-value="3"></i>
+              <i class="far fa-star" data-value="4"></i>
+              <i class="far fa-star" data-value="5"></i>
+            </span>
+            <input type="text" class="form-control form-control-sm star-comment-input me-2" style="width: 540px;" placeholder="Nhận xét của bạn...">
+            <button class="btn btn-sm btn-outline-primary">Đánh giá</button>
+            <!-- Khi click vào số sao, số sao tương ứng sẽ sáng lên -->
+            <!-- Click vào sao thứ N thì N sao đầu sáng -->
+          </div>
+        </div>
+      </div>
+      <!-- Món ăn 2 -->
+      <div class="d-flex align-items-center mb-2">
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
+             class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">Khoai Tây Chiên</div>
+          <div class="text-muted small">Số lượng: 1 | Đơn vị: Phần</div>
+          <!-- Đánh giá -->
+          <div class="mt-2 d-flex align-items-center">
+            <span class="me-2">Đánh giá:</span>
+            <span class="star-rating text-warning fs-5 me-2" data-rating="0">
+              <i class="far fa-star" data-value="1"></i>
+              <i class="far fa-star" data-value="2"></i>
+              <i class="far fa-star" data-value="3"></i>
+              <i class="far fa-star" data-value="4"></i>
+              <i class="far fa-star" data-value="5"></i>
+            </span>
+            <input type="text" class="form-control form-control-sm star-comment-input me-2" style="width: 540px;" placeholder="Nhận xét của bạn...">
+            <button class="btn btn-sm btn-outline-primary">Đánh giá</button>
+            <!-- Khi click vào số sao, số sao tương ứng sẽ sáng lên -->
+            <!-- Click vào sao thứ N thì N sao đầu sáng -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Phần 3: Tổng tiền -->
+    <div class="bg-light border-top px-3 py-2 d-flex justify-content-end rounded-bottom">
+      <span class="fw-bold fs-5">Tổng tiền: <span class="text-danger">110.000đ</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- Đơn hàng đã đặt khác -->
+<div class="card mb-4 shadow-sm border-success border-2">
+  <div class="card-body p-0">
+    <div class="d-flex flex-wrap align-items-center justify-content-between bg-success bg-opacity-25 px-3 py-3 border-bottom rounded-top">
+      <div>
+        <span class="fw-bold fs-5 text-dark">Bún Bò Huế 123</span>
+        <span class="ms-3"><i class="fas fa-phone"></i> 0902 345 678</span>
+        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> 45A Phan Đình Phùng, Gò Vấp</span>
+        <span class="ms-3"><i class="fas fa-clock"></i> Đặt lúc: 09:15 01/06/2024</span>
+      </div>
+      <div class="d-flex align-items-center mt-2 mt-md-0">
+        <span class="badge bg-success text-white">Hoàn tất</span>
+      </div>
+    </div>
+    <div class="p-3">
+      <div class="d-flex align-items-center mb-2">
+        <img src="https://via.placeholder.com/60x60.png?text=Bún+Bò"
+             class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">Bún Bò Huế Đặc Biệt</div>
+          <div class="text-muted small">Số lượng: 1 | Đơn vị: Tô</div>
+          <!-- Đánh giá -->
+          <div class="mt-2 d-flex align-items-center">
+            <span class="me-2">Đánh giá:</span>
+            <span class="star-rating text-warning fs-5 me-2" data-rating="0">
+              <i class="far fa-star" data-value="1"></i>
+              <i class="far fa-star" data-value="2"></i>
+              <i class="far fa-star" data-value="3"></i>
+              <i class="far fa-star" data-value="4"></i>
+              <i class="far fa-star" data-value="5"></i>
+            </span>
+            <input type="text" class="form-control form-control-sm star-comment-input me-2" style="width: 540px;" placeholder="Nhận xét của bạn...">
+            <button class="btn btn-sm btn-outline-primary">Đánh giá</button>
+            <!-- Khi click vào số sao, số sao tương ứng sẽ sáng lên -->
+            <!-- Click vào sao thứ N thì N sao đầu sáng -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bg-light border-top px-3 py-2 d-flex justify-content-end rounded-bottom">
+      <span class="fw-bold fs-5">Tổng tiền: <span class="text-danger">50.000đ</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\orderHistory.html
+document.addEventListener('DOMContentLoaded', function() {
+  // Map số sao sang text comment
+  var starTexts = {
+    0: "",
+    1: "Rất tệ",
+    2: "Tệ",
+    3: "Bình thường",
+    4: "Hài lòng",
+    5: "Tuyệt vời"
+  };
+  document.querySelectorAll('.star-rating').forEach(function(starRating) {
+    starRating.addEventListener('click', function(e) {
+      if (e.target.matches('i[data-value]')) {
+        var value = parseInt(e.target.getAttribute('data-value'));
+        var stars = starRating.querySelectorAll('i[data-value]');
+        stars.forEach(function(star, idx) {
+          if (idx < value) {
+            star.classList.remove('far');
+            star.classList.add('fas');
+          } else {
+            star.classList.remove('fas');
+            star.classList.add('far');
+          }
+        });
+        starRating.setAttribute('data-rating', value);
+        // Hiển thị text comment
+        var comment = starRating.parentElement.querySelector('.star-comment');
+        if (comment) comment.textContent = starTexts[value];
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

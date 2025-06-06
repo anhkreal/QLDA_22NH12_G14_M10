@@ -1,0 +1,82 @@
+{% extends "base2.html" %}
+{% load custom_filters %}
+{% load static %}
+{% block title %}Thông tin cá nhân{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <div class="card shadow-sm p-4">
+      <h3 class="mb-4 text-center text-info"><i class="fas fa-user-tie me-2"></i>Thông tin cá nhân</h3>
+      <form id="restaurantOwnerInfoForm">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="name" class="form-label">Họ và tên</label>
+          <input type="text" class="form-control" id="name" name="name" placeholder="Nhập họ và tên" value="{{ user.name|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" value="{{ user.email|default:'' }}" readonly>
+        </div>
+        <div class="mb-3">
+          <label for="phone" class="form-label">Số điện thoại</label>
+          <input type="tel" class="form-control" id="phone" name="phone" placeholder="Nhập số điện thoại" value="{{ user.phone_number|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label for="role" class="form-label">Vai trò</label>
+          <input type="text" class="form-control" id="role" value="Chủ cửa hàng" readonly>
+        </div>
+        <div class="mb-3">
+          <label for="street" class="form-label">Tên đường</label>
+          <input type="text" class="form-control" id="street" name="street" placeholder="Nhập tên đường" value="{{ user.street|default:'' }}" required>
+        </div>
+        <div class="mb-4">
+          <label for="district" class="form-label">Quận</label>
+          <select class="form-select" id="district" name="district" required>
+            <option value="">Chọn quận</option>
+            <option value="Hải Châu" {% if user.district == 'Hải Châu' %}selected{% endif %}>Hải Châu</option>
+            <option value="Thanh Khê" {% if user.district == 'Thanh Khê' %}selected{% endif %}>Thanh Khê</option>
+            <option value="Sơn Trà" {% if user.district == 'Sơn Trà' %}selected{% endif %}>Sơn Trà</option>
+            <option value="Ngũ Hành Sơn" {% if user.district == 'Ngũ Hành Sơn' %}selected{% endif %}>Ngũ Hành Sơn</option>
+            <option value="Liên Chiểu" {% if user.district == 'Liên Chiểu' %}selected{% endif %}>Liên Chiểu</option>
+            <option value="Cẩm Lệ" {% if user.district == 'Cẩm Lệ' %}selected{% endif %}>Cẩm Lệ</option>
+            <option value="Hòa Vang" {% if user.district == 'Hòa Vang' %}selected{% endif %}>Hòa Vang</option>
+            <option value="Hoàng Sa" {% if user.district == 'Hoàng Sa' %}selected{% endif %}>Hoàng Sa</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-info w-100 fw-bold text-white">Cập nhật thông tin</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('restaurantOwnerInfoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch('{% url "restaurant-owner-info" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Có lỗi xảy ra khi cập nhật thông tin');
+    });
+});
+</script>
+
+{% endblock %}
