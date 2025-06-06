@@ -36,5 +36,6 @@ urlpatterns = [
     path('api/delete-cart-item/', views.api_delete_cart_item, name='api-delete-cart-item'),
     path('api/add-to-cart/', views.api_add_to_cart, name='api-add-to-cart'),
     path('api/create-invoice/', views.api_create_invoice, name='api-create-invoice'),
+    path('api/confirm-payment/', views.api_confirm_payment, name='api-confirm-payment'),
 ]
 

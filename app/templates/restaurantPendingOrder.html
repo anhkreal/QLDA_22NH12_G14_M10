@@ -48,13 +48,15 @@
 <script>
 function updateInvoiceStatus(invoiceId, status, btn) {
   btn.disabled = true;
+  // Nếu nhấn xác nhận, chuyển sang trạng thái 1; nếu nhấn từ chối, chuyển sang trạng thái 3
+  let newStatus = status === 1 ? 1 : 3;
   fetch('/api/update-invoice-status/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': '{{ csrf_token }}'
     },
-    body: JSON.stringify({ invoice_id: invoiceId, status: status })
+    body: JSON.stringify({ invoice_id: invoiceId, status: newStatus })
   })
   .then(res => res.json())
   .then(data => {
