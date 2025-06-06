@@ -1,11 +1,17 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate
+from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate, Invoice
 import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
 import base64
 from django.utils import timezone
+from django.db import connection, transaction
+from django.contrib import messages
+from django.views.decorators.http import require_POST
+import unicodedata
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 def customer_home(request):
     query = request.GET.get('q', '')
@@ -95,16 +101,254 @@ def restaurant_view_details(request):
     })
 
 def cart(request):
-    return render(request, 'cart.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    # Lấy các dish_cart của user (giả sử DishInvoice liên kết user với dish_cart)
+    dish_invoices = DishInvoice.objects.filter(id_customer=user_id, id_invoice__isnull=True)
+    dish_cart_ids = [di.id_dish_cart for di in dish_invoices]
+    dish_carts = DishCart.objects.filter(id__in=dish_cart_ids)
+    # Lấy thông tin món ăn và nhà hàng
+    dish_ids = [dc.id_dish for dc in dish_carts]
+    dishes = {d.id: d for d in Dish.objects.filter(id__in=dish_ids, is_delected=False)}
+    # Gộp theo nhà hàng
+    restaurant_map = {}
+    for dc in dish_carts:
+        dish = dishes.get(dc.id_dish)
+        if not dish:
+            continue
+        # Lấy nhà hàng
+        rest_id = dish.id_restaurant
+        if rest_id not in restaurant_map:
+            restaurant = Restaurant.objects.filter(id=rest_id, is_deleted=False).first()
+            if not restaurant:
+                continue
+            restaurant_map[rest_id] = {
+                'restaurant': restaurant,
+                'items': []
+            }
+        restaurant_map[rest_id]['items'].append({
+            'dish_cart': dc,
+            'dish': dish,
+            'checked': dc.is_checked,
+            'quantity': dc.quantity or 1,
+        })
+    # Tính tổng tiền các món được chọn
+    total = 0
+    for r in restaurant_map.values():
+        for item in r['items']:
+            if item['checked']:
+                total += (item['dish'].price or 0) * (item['quantity'] or 1)
+    context = {
+        'restaurants': list(restaurant_map.values()),
+        'total': total
+    }
+    return render(request, 'cart.html', context)
 
 def shipping_order(request):
     return render(request, 'shippingOrder.html')
 
 def order_history(request):
-    return render(request, 'orderHistory.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    # Lấy tất cả hóa đơn hoàn tất (status=3) hoặc bị từ chối (status=2)
+    invoices = Invoice.objects.filter(status__in=[2, 3]).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        # Kiểm tra user có phải là khách hàng của hóa đơn này không
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id, id_customer=user_id)
+        if not dish_invoices.exists():
+            continue
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        dishes = []
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            # Kiểm tra trạng thái đánh giá
+            rated = False
+            rate = None
+            if di.id_rate:
+                rated = True
+                rate = Rate.objects.filter(id=di.id_rate).first()
+            dishes.append({
+                'dish_invoice_id': di.id,
+                'name': dish.name if dish else '',
+                'quantity': dish_cart.quantity if dish_cart else 0,
+                'unit': dish.unit if dish else '',
+                'rated': rated,
+                'star': rate.star if rate else 0,
+                'comment': rate.comment if rate else '',
+            })
+        orders.append({
+            'restaurant_name': restaurant.name if restaurant else '',
+            'restaurant_phone': restaurant.id if restaurant else '',
+            'restaurant_address': f"{restaurant.street}, {restaurant.district}" if restaurant else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'status': invoice.status,
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'orderHistory.html', {'orders': orders})
 
 def spending_statistics(request):
-    return render(request, 'spendingStatistics.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    user = User.objects.filter(id=user_id).first()
+    if not user or user.role != 0:  # Chỉ khách hàng mới có thống kê chi tiêu
+        return redirect('login')
+
+    # Lấy tất cả invoice của khách hàng thông qua DishInvoice
+    dish_invoices = DishInvoice.objects.filter(id_customer=user_id).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+    invoice_ids = [di.id_invoice for di in dish_invoices]
+    invoices = Invoice.objects.filter(id__in=invoice_ids, id_deleted__isnull=True)
+
+    # Tính toán thống kê theo ngày (30 ngày gần nhất)
+    today = datetime.now().date()
+    daily_spending = defaultdict(int)
+
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 30 ngày gần nhất
+            if (today - invoice_date).days <= 30:
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                daily_spending[invoice_date] += total_amount
+
+    # Tạo dữ liệu cho 30 ngày gần nhất
+    day_labels = []
+    day_data = []
+    for i in range(30, -1, -1):
+        date = today - timedelta(days=i)
+        day_labels.append(date.strftime('%d/%m'))
+        day_data.append(daily_spending.get(date, 0))
+
+    # Tính toán thống kê theo tuần (12 tuần gần nhất)
+    weekly_spending = defaultdict(int)
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 12 tuần gần nhất (84 ngày)
+            if (today - invoice_date).days <= 84:
+                # Tính tuần trong năm
+                year, week, _ = invoice_date.isocalendar()
+                week_key = f"{year}-W{week:02d}"
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                weekly_spending[week_key] += total_amount
+
+    # Tạo dữ liệu cho 12 tuần gần nhất
+    week_labels = []
+    week_data = []
+    for i in range(11, -1, -1):
+        date = today - timedelta(weeks=i)
+        year, week, _ = date.isocalendar()
+        week_key = f"{year}-W{week:02d}"
+        week_labels.append(f"Tuần {week}/{year}")
+        week_data.append(weekly_spending.get(week_key, 0))
+
+    # Tính toán thống kê theo tháng (12 tháng gần nhất)
+    monthly_spending = defaultdict(int)
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 12 tháng gần nhất (365 ngày)
+            if (today - invoice_date).days <= 365:
+                year_month = f"{invoice_date.year}-{invoice_date.month:02d}"
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                monthly_spending[year_month] += total_amount
+
+    # Tạo dữ liệu cho 12 tháng gần nhất
+    month_labels = []
+    month_data = []
+    current_date = today.replace(day=1)  # Đầu tháng hiện tại
+    for i in range(11, -1, -1):
+        # Tính tháng trước đó
+        if current_date.month - i <= 0:
+            year = current_date.year - 1
+            month = 12 + (current_date.month - i)
+        else:
+            year = current_date.year
+            month = current_date.month - i
+
+        year_month = f"{year}-{month:02d}"
+        month_labels.append(f"{month:02d}/{year}")
+        month_data.append(monthly_spending.get(year_month, 0))
+
+    # Tính toán thống kê theo năm (tất cả các năm có dữ liệu)
+    yearly_spending = defaultdict(int)
+    years_with_data = set()
+
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            year = invoice_date.year
+            years_with_data.add(year)
+            year_str = str(year)
+            total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+            yearly_spending[year_str] += total_amount
+
+    # Tạo dữ liệu cho tất cả các năm có dữ liệu, sắp xếp từ cũ đến mới
+    year_labels = []
+    year_data = []
+    if years_with_data:
+        sorted_years = sorted(years_with_data)
+        for year in sorted_years:
+            year_str = str(year)
+            year_labels.append(year_str)
+            year_data.append(yearly_spending.get(year_str, 0))
+    else:
+        # Nếu không có dữ liệu, hiển thị năm hiện tại
+        current_year = str(today.year)
+        year_labels.append(current_year)
+        year_data.append(0)
+
+    # Tạo dữ liệu chi tiết theo từng năm (theo tháng trong năm)
+    yearly_detail_data = {}
+    if years_with_data:
+        for year in sorted(years_with_data):
+            # Lấy dữ liệu theo tháng trong năm này
+            monthly_data_for_year = defaultdict(int)
+            for invoice in invoices:
+                if invoice.time and invoice.time.year == year:
+                    month = invoice.time.month
+                    total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                    monthly_data_for_year[month] += total_amount
+
+            # Tạo labels và data cho 12 tháng
+            month_labels_year = []
+            month_data_year = []
+            for month in range(1, 13):
+                month_labels_year.append(f"Tháng {month}")
+                month_data_year.append(monthly_data_for_year.get(month, 0))
+
+            yearly_detail_data[str(year)] = {
+                'labels': month_labels_year,
+                'data': month_data_year
+            }
+
+    # Tính tổng chi tiêu
+    total_spending = sum(daily_spending.values())
+    total_orders = len(invoice_ids)
+
+    context = {
+        'day_labels': json.dumps(day_labels),
+        'day_data': json.dumps(day_data),
+        'week_labels': json.dumps(week_labels),
+        'week_data': json.dumps(week_data),
+        'month_labels': json.dumps(month_labels),
+        'month_data': json.dumps(month_data),
+        'year_labels': json.dumps(year_labels),
+        'year_data': json.dumps(year_data),
+        'yearly_detail_data': json.dumps(yearly_detail_data),
+        'available_years': sorted(years_with_data, reverse=True) if years_with_data else [today.year],
+        'total_spending': total_spending,
+        'total_orders': total_orders,
+        'user': user
+    }
+
+    return render(request, 'spendingStatistics.html', context)
 
 def change_password(request):
     return render(request, 'changePassword.html')
@@ -194,11 +438,74 @@ def register(request):
         return render(request, 'register.html')
 
 def customer_info(request):
-    return render(request, 'customerInfo.html')
+    if request.method == 'GET':
+        # Lấy thông tin user từ session
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return redirect('login')
+
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return redirect('login')
+
+        context = {
+            'user': user
+        }
+        return render(request, 'customerInfo.html', context)
+
+    elif request.method == 'POST':
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JsonResponse({"success": False, "message": "Vui lòng đăng nhập"})
+
+        try:
+            # Lấy dữ liệu từ form
+            name = request.POST.get('name', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            street = request.POST.get('street', '').strip()
+            district = request.POST.get('district', '').strip()
+
+            # Validate dữ liệu
+            if not name:
+                return JsonResponse({"success": False, "message": "Họ và tên không được để trống"})
+            if not phone:
+                return JsonResponse({"success": False, "message": "Số điện thoại không được để trống"})
+            if not street:
+                return JsonResponse({"success": False, "message": "Tên đường không được để trống"})
+            if not district:
+                return JsonResponse({"success": False, "message": "Quận không được để trống"})
+
+            # Cập nhật thông tin user
+            user = User.objects.filter(id=user_id).first()
+            if user:
+                user.name = name
+                user.phone_number = phone
+                user.street = street
+                user.district = district
+                user.save()
+
+                return JsonResponse({"success": True, "message": "Cập nhật thông tin thành công"})
+            else:
+                return JsonResponse({"success": False, "message": "Không tìm thấy thông tin người dùng"})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": f"Có lỗi xảy ra: {str(e)}"})
+
+    return JsonResponse({"success": False, "message": "Phương thức không được hỗ trợ"})
+
+def remove_accents(input_str):
+    if not input_str:
+        return ''
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return ''.join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
 
 def restaurant_owner_home(request):
     user_id = request.session.get('user_id')
     context = {}
+
+    # Lấy từ khóa tìm kiếm
+    query = request.GET.get('q', '').strip()
+    context['query'] = query
 
     # Truy vấn user_restaurant
     user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
@@ -212,7 +519,20 @@ def restaurant_owner_home(request):
         context['restaurant'] = restaurant
 
         # Lấy danh sách món ăn của nhà hàng chỉ lấy is_delected=False hoặc 0
-        dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+        all_dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+        # Nếu có từ khóa tìm kiếm thì lọc theo tên hoặc mô tả (không dấu, không phân biệt hoa thường)
+        if query:
+            query_no_accents = remove_accents(query)
+            filtered_dishes = []
+            for dish in all_dishes:
+                name_no_accents = remove_accents(dish.name)
+                desc_no_accents = remove_accents(dish.decription)
+                if query_no_accents in name_no_accents or query_no_accents in desc_no_accents:
+                    filtered_dishes.append(dish)
+            dishes = filtered_dishes
+        else:
+            dishes = list(all_dishes)
+
         dish_list = []
         for dish in dishes:
             # Truy vấn dish_cart cho từng dish
@@ -236,7 +556,10 @@ def restaurant_owner_home(request):
             })
         context['dishes'] = dish_list
         if not dish_list:
-            context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
+            if query:
+                context['dish_message'] = "Không có món ăn nào phù hợp với từ khóa tìm kiếm."
+            else:
+                context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
 
     return render(request, 'restaurantOwnerHome.html', context)
 
@@ -246,11 +569,293 @@ def restaurant_pending_order(request):
 def restaurant_shipping_order(request):
     return render(request, 'restaurantShippingOrder.html')
 
-def restaurant_order_history(request):
-    return render(request, 'restaurantOrderHistory.html')
-
 def revenue_statistics(request):
-    return render(request, 'revenueStatistics.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    user = User.objects.filter(id=user_id).first()
+    if not user or user.role != 1:  # Chỉ chủ cửa hàng mới có thống kê doanh thu
+        return redirect('login')
+
+    # Lấy nhà hàng của user
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return redirect('restaurant-info')
+
+    restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
+    if not restaurant:
+        return redirect('restaurant-info')
+
+    # Lấy tất cả invoice của nhà hàng
+    invoices = Invoice.objects.filter(id_restaurant=restaurant.id, id_deleted__isnull=True)
+
+    # Tính toán thống kê theo ngày (30 ngày gần nhất)
+    today = datetime.now().date()
+    daily_revenue = defaultdict(int)
+
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 30 ngày gần nhất
+            if (today - invoice_date).days <= 30:
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                daily_revenue[invoice_date] += total_amount
+
+    # Tạo dữ liệu cho 30 ngày gần nhất
+    day_labels = []
+    day_data = []
+    for i in range(30, -1, -1):
+        date = today - timedelta(days=i)
+        day_labels.append(date.strftime('%d/%m'))
+        day_data.append(daily_revenue.get(date, 0))
+
+    # Tính toán thống kê theo tuần (12 tuần gần nhất)
+    weekly_revenue = defaultdict(int)
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 12 tuần gần nhất (84 ngày)
+            if (today - invoice_date).days <= 84:
+                # Tính tuần trong năm
+                year, week, _ = invoice_date.isocalendar()
+                week_key = f"{year}-W{week:02d}"
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                weekly_revenue[week_key] += total_amount
+
+    # Tạo dữ liệu cho 12 tuần gần nhất
+    week_labels = []
+    week_data = []
+    for i in range(11, -1, -1):
+        date = today - timedelta(weeks=i)
+        year, week, _ = date.isocalendar()
+        week_key = f"{year}-W{week:02d}"
+        week_labels.append(f"Tuần {week}/{year}")
+        week_data.append(weekly_revenue.get(week_key, 0))
+
+    # Tính toán thống kê theo tháng (12 tháng gần nhất)
+    monthly_revenue = defaultdict(int)
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            # Chỉ lấy 12 tháng gần nhất (365 ngày)
+            if (today - invoice_date).days <= 365:
+                year_month = f"{invoice_date.year}-{invoice_date.month:02d}"
+                total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                monthly_revenue[year_month] += total_amount
+
+    # Tạo dữ liệu cho 12 tháng gần nhất
+    month_labels = []
+    month_data = []
+    current_date = today.replace(day=1)  # Đầu tháng hiện tại
+    for i in range(11, -1, -1):
+        # Tính tháng trước đó
+        if current_date.month - i <= 0:
+            year = current_date.year - 1
+            month = 12 + (current_date.month - i)
+        else:
+            year = current_date.year
+            month = current_date.month - i
+
+        year_month = f"{year}-{month:02d}"
+        month_labels.append(f"{month:02d}/{year}")
+        month_data.append(monthly_revenue.get(year_month, 0))
+
+    # Tính toán thống kê theo năm (tất cả các năm có dữ liệu)
+    yearly_revenue = defaultdict(int)
+    years_with_data = set()
+
+    for invoice in invoices:
+        if invoice.time:
+            invoice_date = invoice.time.date()
+            year = invoice_date.year
+            years_with_data.add(year)
+            year_str = str(year)
+            total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+            yearly_revenue[year_str] += total_amount
+
+    # Tạo dữ liệu cho tất cả các năm có dữ liệu, sắp xếp từ cũ đến mới
+    year_labels = []
+    year_data = []
+    if years_with_data:
+        sorted_years = sorted(years_with_data)
+        for year in sorted_years:
+            year_str = str(year)
+            year_labels.append(year_str)
+            year_data.append(yearly_revenue.get(year_str, 0))
+    else:
+        # Nếu không có dữ liệu, hiển thị năm hiện tại
+        current_year = str(today.year)
+        year_labels.append(current_year)
+        year_data.append(0)
+
+    # Tính các thống kê tổng quan
+    total_revenue = sum(daily_revenue.values())
+    total_orders = invoices.count()
+
+    # Thống kê món ăn bán chạy nhất
+    dish_sales = defaultdict(int)
+    dish_revenue = defaultdict(int)
+
+    # Lấy tất cả DishInvoice liên quan đến nhà hàng
+    invoice_ids = [inv.id for inv in invoices]
+    dish_invoices = DishInvoice.objects.filter(id_invoice__in=invoice_ids)
+
+    for dish_invoice in dish_invoices:
+        dish_cart = DishCart.objects.filter(id=dish_invoice.id_dish_cart).first()
+        if dish_cart:
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first()
+            if dish:
+                quantity = dish_cart.quantity or 0
+                dish_sales[dish.name] += quantity
+                dish_revenue[dish.name] += quantity * dish.price
+
+    # Sắp xếp món ăn theo doanh thu
+    top_dishes = sorted(dish_revenue.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Tính đánh giá trung bình của nhà hàng
+    restaurant_dishes = Dish.objects.filter(id_restaurant=restaurant.id)
+    dish_ids = [dish.id for dish in restaurant_dishes]
+    dish_carts = DishCart.objects.filter(id_dish__in=dish_ids)
+    dish_cart_ids = [dc.id for dc in dish_carts]
+    rated_dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_rate__isnull=True).exclude(id_rate__exact='')
+
+    total_ratings = 0
+    rating_sum = 0
+    for di in rated_dish_invoices:
+        rate = Rate.objects.filter(id=di.id_rate).first()
+        if rate:
+            total_ratings += 1
+            rating_sum += rate.star
+
+    avg_rating = round(rating_sum / total_ratings, 2) if total_ratings > 0 else 0
+
+    # Tạo dữ liệu chi tiết theo từng năm (theo tháng trong năm)
+    yearly_detail_data = {}
+    if years_with_data:
+        for year in sorted(years_with_data):
+            # Lấy dữ liệu theo tháng trong năm này
+            monthly_data_for_year = defaultdict(int)
+            for invoice in invoices:
+                if invoice.time and invoice.time.year == year:
+                    month = invoice.time.month
+                    total_amount = (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+                    monthly_data_for_year[month] += total_amount
+
+            # Tạo labels và data cho 12 tháng
+            month_labels_year = []
+            month_data_year = []
+            for month in range(1, 13):
+                month_labels_year.append(f"Tháng {month}")
+                month_data_year.append(monthly_data_for_year.get(month, 0))
+
+            yearly_detail_data[str(year)] = {
+                'labels': month_labels_year,
+                'data': month_data_year
+            }
+
+    context = {
+        'day_labels': json.dumps(day_labels),
+        'day_data': json.dumps(day_data),
+        'week_labels': json.dumps(week_labels),
+        'week_data': json.dumps(week_data),
+        'month_labels': json.dumps(month_labels),
+        'month_data': json.dumps(month_data),
+        'year_labels': json.dumps(year_labels),
+        'year_data': json.dumps(year_data),
+        'yearly_detail_data': json.dumps(yearly_detail_data),
+        'available_years': sorted(years_with_data, reverse=True) if years_with_data else [today.year],
+        'total_revenue': total_revenue,
+        'total_orders': total_orders,
+        'top_dishes': top_dishes,
+        'avg_rating': avg_rating,
+        'total_ratings': total_ratings,
+        'restaurant': restaurant,
+        'user': user
+    }
+
+    return render(request, 'revenueStatistics.html', context)
+def shipping_orders_view(request):
+    from .models import Invoice, DishInvoice, DishCart, Dish, Restaurant, User
+    orders = []
+    # Lấy đơn hàng chờ nhận hàng (status=1) trước
+    invoices = list(Invoice.objects.filter(status__in=[0,1]).order_by('-status', 'time').select_related())
+    for invoice in invoices:
+        # Lấy nhà hàng
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        # Lấy các dish_invoice
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        hide_order = False
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                # Nếu là đơn chờ nhận hàng, kiểm tra món bị xóa
+                if invoice.status == 1 and dish.is_delected:
+                    hide_order = True
+                    break
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        # Nếu là đơn chờ nhận hàng và có món bị xóa, cập nhật status=2 và bỏ qua
+        if invoice.status == 1 and hide_order:
+            invoice.status = 2
+            invoice.save(update_fields=['status'])
+            continue
+        orders.append({
+            'invoice_id': invoice.id,
+            'restaurant_name': restaurant.name if restaurant else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+            'status': invoice.status,
+        })
+    return render(request, 'shippingOrder.html', {'orders': orders})
+
+def restaurant_order_history(request):
+    user_id = request.session.get('user_id')
+    # Lấy id nhà hàng của chủ nhà hàng
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return render(request, 'restaurantOrderHistory.html', {'orders': []})
+    restaurant_id = user_restaurant.id_restaurant
+    # Lấy các hóa đơn đã hoàn tất của nhà hàng này
+    invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=2).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'customer_name': customer.name if customer else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'restaurantOrderHistory.html', {'orders': orders})
 
 def restaurant_info(request):
     user_id = request.session.get('user_id')
@@ -311,7 +916,60 @@ def restaurant_info(request):
     return render(request, 'restaurantInfo.html', context)
 
 def restaurant_owner_info(request):
-    return render(request, 'restaurantOwnerInfo.html')
+    if request.method == 'GET':
+        # Lấy thông tin user từ session
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return redirect('login')
+
+        user = User.objects.filter(id=user_id).first()
+        if not user or user.role != 1:  # Chỉ chủ cửa hàng
+            return redirect('login')
+
+        context = {
+            'user': user
+        }
+        return render(request, 'restaurantOwnerInfo.html', context)
+
+    elif request.method == 'POST':
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JsonResponse({"success": False, "message": "Vui lòng đăng nhập"})
+
+        try:
+            # Lấy dữ liệu từ form
+            name = request.POST.get('name', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            street = request.POST.get('street', '').strip()
+            district = request.POST.get('district', '').strip()
+
+            # Validate dữ liệu
+            if not name:
+                return JsonResponse({"success": False, "message": "Họ và tên không được để trống"})
+            if not phone:
+                return JsonResponse({"success": False, "message": "Số điện thoại không được để trống"})
+            if not street:
+                return JsonResponse({"success": False, "message": "Tên đường không được để trống"})
+            if not district:
+                return JsonResponse({"success": False, "message": "Quận không được để trống"})
+
+            # Cập nhật thông tin user
+            user = User.objects.filter(id=user_id).first()
+            if user and user.role == 1:  # Chỉ chủ cửa hàng
+                user.name = name
+                user.phone_number = phone
+                user.street = street
+                user.district = district
+                user.save()
+
+                return JsonResponse({"success": True, "message": "Cập nhật thông tin thành công"})
+            else:
+                return JsonResponse({"success": False, "message": "Không tìm thấy thông tin người dùng hoặc không có quyền"})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": f"Có lỗi xảy ra: {str(e)}"})
+
+    return JsonResponse({"success": False, "message": "Phương thức không được hỗ trợ"})
 
 @csrf_exempt
 def logout(request):
@@ -434,6 +1092,103 @@ def api_dish_reviews(request):
                     })
     return JsonResponse({"success": True, "reviews": reviews})
 
+def api_update_invoice_status(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        invoice_id = data.get('invoice_id')
+        status = data.get('status')
+        with transaction.atomic():
+            invoice = Invoice.objects.filter(id=invoice_id).first()
+            if invoice and status in [1, 2]:
+                invoice.status = status
+                invoice.save(update_fields=['status'])
+                return JsonResponse({'success': True})
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
+    return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
+
+def pending_orders_view(request):
+    orders = []
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT i.id, i.time, i.total_payment
+            FROM invoice i
+            WHERE i.status = 0
+            ORDER BY i.time ASC
+        ''')
+        invoices = cursor.fetchall()
+        for inv in invoices:
+            invoice_id, order_time, total_payment = inv
+            # Lấy id_customer đầu tiên từ dish_invoice
+            cursor.execute('SELECT id_customer FROM dish_invoice WHERE id_invoice = %s LIMIT 1', [invoice_id])
+            customer_row = cursor.fetchone()
+            customer = None
+            if customer_row:
+                customer_id = customer_row[0]
+                cursor.execute('SELECT name, phone_number, street, district FROM user WHERE id = %s', [customer_id])
+                customer = cursor.fetchone()
+            # Lấy danh sách món ăn
+            cursor.execute('''
+                SELECT d.name, dc.quantity, d.price, d.unit
+                FROM dish_invoice di
+                JOIN dish_cart dc ON di.id_dish_cart = dc.id
+                JOIN dish d ON dc.id_dish = d.id
+                WHERE di.id_invoice = %s
+            ''', [invoice_id])
+            items = [
+                {
+                    'name': row[0],
+                    'quantity': row[1],
+                    'price': row[2],
+                    'unit': row[3],
+                } for row in cursor.fetchall()
+            ]
+            orders.append({
+                'invoice_id': invoice_id,
+                'customer_name': customer[0] if customer else '',
+                'customer_phone': customer[1] if customer else '',
+                'customer_address': f"{customer[2]}, {customer[3]}" if customer and customer[2] and customer[3] else '',
+                'order_time': order_time.strftime('%H:%M %d/%m/%Y') if order_time else '',
+                'dishes': items,
+                'total_payment': total_payment,
+            })
+    return render(request, 'restaurantPendingOrder.html', {'orders': orders})
+
+def confirm_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = 1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã xác nhận đơn hàng!')
+    return redirect('pending-orders')
+
+def reject_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = -1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã từ chối đơn hàng!')
+    return redirect('pending-orders')
+#ok
+@csrf_exempt
+def api_submit_rating(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        dish_invoice_id = data.get('dish_invoice_id')
+        star = int(data.get('star', 0))
+        comment = data.get('comment', '').strip()
+        user_id = request.session.get('user_id')
+        if not (dish_invoice_id and 1 <= star <= 5 and user_id):
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin hoặc số sao không hợp lệ!'})
+        dish_invoice = DishInvoice.objects.filter(id=dish_invoice_id, id_customer=user_id).first()
+        if not dish_invoice:
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy món ăn trong đơn hàng!'})
+        if dish_invoice.id_rate:
+            return JsonResponse({'success': False, 'message': 'Bạn đã đánh giá món này!'})
+        rate_id = str(uuid.uuid4())
+        rate = Rate.objects.create(id=rate_id, star=star, comment=comment)
+        dish_invoice.id_rate = rate_id
+        dish_invoice.save(update_fields=['id_rate'])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'})
+
 def restaurant_list(request):
     query = request.GET.get('q', '')
     if query:
@@ -444,3 +1199,14 @@ def restaurant_list(request):
         'restaurants': restaurants,
         'query': query
     })
+
+@csrf_exempt
+@require_POST
+def api_delete_cart_item(request):
+    dish_cart_id = request.POST.get('dish_cart_id')
+    user_id = request.session.get('user_id')
+    if not dish_cart_id or not user_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin.'})
+    # Chỉ xóa dish_invoice của user hiện tại và chưa có invoice (chưa đặt hàng)
+    deleted = DishInvoice.objects.filter(id_dish_cart=dish_cart_id, id_customer=user_id, id_invoice__isnull=True).delete()
+    return JsonResponse({'success': True})

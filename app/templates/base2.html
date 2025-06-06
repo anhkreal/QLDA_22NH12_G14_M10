@@ -98,7 +98,7 @@
   <!-- Top Bar: Hàng 1 -->
   <div class="top-bar py-2 container-custom d-flex justify-content-between align-items-center">
     <div>
-      <a href="{% if request.session.user_id %}{% url 'restaurant-pending-order' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
+      <a href="{% if request.session.user_id %}{% url 'pending-orders' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
         <i class="fas fa-clipboard-list"></i> Đơn hàng chờ xác nhận
       </a>
       <a href="{% if request.session.user_id %}{% url 'restaurant-shipping-order' %}{% else %}#{% endif %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
@@ -145,10 +145,12 @@
       <i class="fas fa-store"></i> M10 Eats
     </div>
     <div class="search-bar flex-grow-1 mx-3">
-      <div class="input-group">
-        <input type="text" class="form-control" placeholder="Tìm kiếm sản phẩm...">
-        <button class="btn btn-warning"><i class="fas fa-search"></i></button>
-      </div>
+      <form method="get" action="{% url 'restaurant-owner-home' %}" class="w-100">
+        <div class="input-group">
+          <input type="text" name="q" class="form-control" placeholder="Tìm kiếm món ăn..." value="{{ query|default:'' }}">
+          <button class="btn btn-warning" type="submit"><i class="fas fa-search"></i></button>
+        </div>
+      </form>
     </div>
     <!-- Bỏ giỏ hàng -->
   </div>
