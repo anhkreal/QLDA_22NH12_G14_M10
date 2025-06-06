@@ -12,29 +12,36 @@ from django.views.decorators.http import require_POST
 import unicodedata
 from collections import defaultdict
 from datetime import datetime, timedelta
+from django.db import models  # <-- Thêm dòng này để fix lỗi NameError
 
 def customer_home(request):
     query = request.GET.get('q', '')
     user_id = request.session.get('user_id')
     user = User.objects.filter(id=user_id).first() if user_id else None
-    # Lấy danh sách nhà hàng như cũ
+
+    # Tìm kiếm nhà hàng và món ăn theo từ khóa
+    restaurants = Restaurant.objects.filter(is_deleted=False)
+    dishes = Dish.objects.filter(is_delected=False)
     if query:
-        restaurants = Restaurant.objects.filter(name__icontains=query, is_deleted=False)
+        # Lọc nhà hàng theo tên chứa từ khóa
+        restaurants = restaurants.filter(name__icontains=query)
+        # Lọc món ăn theo tên chứa từ khóa hoặc tên nhà hàng chứa từ khóa
+        dishes = dishes.filter(
+            models.Q(name__icontains=query) |
+            models.Q(id_restaurant__in=Restaurant.objects.filter(name__icontains=query).values_list('id', flat=True))
+        )
     else:
-        restaurants = Restaurant.objects.filter(is_deleted=False)
-    # Lấy danh sách món ăn phổ biến (ưu tiên cùng quận)
-    dishes = []
-    if user and user.district:
-        # Ưu tiên món ăn từ nhà hàng cùng quận
-        same_district_restaurants = Restaurant.objects.filter(district=user.district, is_deleted=False)
-        same_district_dishes = Dish.objects.filter(id_restaurant__in=[r.id for r in same_district_restaurants], is_delected=False)
-        other_dishes = Dish.objects.exclude(id__in=[d.id for d in same_district_dishes]).filter(is_delected=False)
-        dishes = list(same_district_dishes[:10])
-        if len(dishes) < 10:
-            dishes += list(other_dishes[:10-len(dishes)])
-    else:
-        # Nếu chưa có địa chỉ, lấy 10 món bất kỳ
-        dishes = list(Dish.objects.filter(is_delected=False)[:10])
+        # Nếu không tìm kiếm, lấy 10 món phổ biến (ưu tiên cùng quận)
+        if user and user.district:
+            same_district_restaurants = Restaurant.objects.filter(district=user.district, is_deleted=False)
+            same_district_dishes = Dish.objects.filter(id_restaurant__in=[r.id for r in same_district_restaurants], is_delected=False)
+            other_dishes = Dish.objects.exclude(id__in=[d.id for d in same_district_dishes]).filter(is_delected=False)
+            dishes = list(same_district_dishes[:10])
+            if len(dishes) < 10:
+                dishes += list(other_dishes[:10-len(dishes)])
+        else:
+            dishes = list(Dish.objects.filter(is_delected=False)[:10])
+
     return render(request, 'customerHome.html', {
         'restaurants': restaurants,
         'query': query,
@@ -49,17 +56,24 @@ def dish_detail(request):
     user = User.objects.filter(id=user_id).first() if user_id else None
     dish = Dish.objects.filter(id=dish_id, is_delected=False).first()
     restaurant = None
+    avg_star = 0
+    sold = 0
     if dish:
-        # Fetch the restaurant using the ForeignKey from the dish
         restaurant = Restaurant.objects.filter(id=dish.id_restaurant, is_deleted=False).first()
-    # Lấy 10 đánh giá mới nhất cho món ăn này
-    reviews = []
-    if dish:
+        # Lấy các dish_cart của món này
         dish_carts = DishCart.objects.filter(id_dish=dish.id)
         dish_cart_ids = [dc.id for dc in dish_carts]
+        # Số lượng đã bán (tổng quantity của các dish_cart đã có invoice)
+        sold_cart_ids = DishInvoice.objects.exclude(id_invoice__isnull=True).exclude(id_invoice__exact='').values_list('id_dish_cart', flat=True)
+        sold = DishCart.objects.filter(id__in=sold_cart_ids, id_dish=dish.id).aggregate(total=models.Sum('quantity'))['total'] or 0
+        # Lấy các dish_invoice đã có invoice
         dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
         rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
         rates = Rate.objects.filter(id__in=rate_ids).order_by('-id')[:10]
+        # Tính trung bình số sao
+        if rate_ids:
+            avg_star = Rate.objects.filter(id__in=rate_ids).aggregate(avg=models.Avg('star'))['avg'] or 0
+        reviews = []
         for rate in rates:
             di = next((di for di in dish_invoices if di.id_rate == rate.id), None)
             customer = User.objects.filter(id=di.id_customer).first() if di else None
@@ -68,11 +82,15 @@ def dish_detail(request):
                 'comment': rate.comment,
                 'customer': customer.phone_number if customer else 'Ẩn danh',
             })
+    else:
+        reviews = []
     return render(request, 'dishDetails.html', {
         'dish': dish,
         'restaurant': restaurant,
         'reviews': reviews,
-        'user': user
+        'user': user,
+        'avg_star': avg_star,
+        'sold': sold,
     })
 
 def restaurant_view_details(request):
@@ -209,14 +227,21 @@ def spending_statistics(request):
     if not user or user.role != 0:  # Chỉ khách hàng mới có thống kê chi tiêu
         return redirect('login')
 
-    # Lấy tất cả invoice của khách hàng thông qua DishInvoice, chỉ lấy trạng thái 2 (hoàn tất)
+    # Lấy tất cả dish_invoice của khách hàng
     dish_invoices = DishInvoice.objects.filter(id_customer=user_id).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
     invoice_ids = [di.id_invoice for di in dish_invoices]
+
+    # Lấy các hóa đơn trạng thái 2 (hoàn tất)
     invoices = Invoice.objects.filter(id__in=invoice_ids, status=2, id_deleted__isnull=True)
 
-    # Tổng chi tiêu và tổng đơn hàng (chỉ trạng thái 2)
+    # Tổng chi tiêu
     total_spending = sum((invoice.total_payment or 0) + (invoice.shipping_fee or 0) for invoice in invoices)
-    total_orders = invoices.count()
+
+    # Đếm tổng đơn hàng: số lượng dish_invoice có id_customer=user_id và hóa đơn trạng thái 2 (không trùng lặp dish_invoice)
+    total_orders = DishInvoice.objects.filter(
+        id_customer=user_id,
+        id_invoice__in=invoices.values_list('id', flat=True)
+    ).count()
 
     # Thống kê số lượng đơn hàng trạng thái 2 theo ngày (30 ngày gần nhất)
     today = datetime.now().date()
@@ -450,13 +475,20 @@ def restaurant_owner_home(request):
         for dish in dishes:
             # Truy vấn dish_cart cho từng dish
             dish_carts = DishCart.objects.filter(id_dish=dish.id)
-            # Tính tổng số lượng mua
-            total_quantity = sum(dc.quantity or 0 for dc in dish_carts)
-            # Truy vấn dish_invoice cho từng dish_cart
             dish_cart_ids = [dc.id for dc in dish_carts]
+            # Lấy các dish_invoice liên quan đến dish_cart
             dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+            # Lọc các dish_invoice có invoice.status=2
+            invoice_ids = [di.id_invoice for di in dish_invoices if di.id_invoice]
+            paid_invoices = Invoice.objects.filter(id__in=invoice_ids, status=2)
+            paid_invoice_ids = set(inv.id for inv in paid_invoices)
+            paid_dish_invoices = [di for di in dish_invoices if di.id_invoice in paid_invoice_ids]
+            # Tính tổng số lượng mua chỉ từ các dish_invoice có invoice.status=2
+            paid_dish_cart_ids = [di.id_dish_cart for di in paid_dish_invoices]
+            paid_dish_carts = DishCart.objects.filter(id__in=paid_dish_cart_ids)
+            total_quantity = sum(dc.quantity or 0 for dc in paid_dish_carts)
             # Đếm số lượng đánh giá và tính trung bình sao
-            rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
+            rate_ids = [di.id_rate for di in paid_dish_invoices if di.id_rate]
             rates = Rate.objects.filter(id__in=rate_ids)
             num_ratings = rates.count()
             avg_rating = round(sum(r.star for r in rates) / num_ratings, 2) if num_ratings > 0 else None
@@ -787,6 +819,22 @@ def restaurant_info(request):
     if user_restaurant:
         restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
     context['restaurant'] = restaurant
+
+    # Thêm đoạn này trước return render(...)
+    avg_rating = None
+    total_ratings = 0
+    if restaurant:
+        dishes = Dish.objects.filter(id_restaurant=restaurant.id, is_delected=False)
+        dish_ids = [d.id for d in dishes]
+        dish_carts = DishCart.objects.filter(id_dish__in=dish_ids)
+        dish_cart_ids = [dc.id for dc in dish_carts]
+        rated_dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_rate__isnull=True).exclude(id_rate__exact='')
+        rate_ids = [di.id_rate for di in rated_dish_invoices if di.id_rate]
+        rates = Rate.objects.filter(id__in=rate_ids)
+        total_ratings = rates.count()
+        avg_rating = round(sum(r.star for r in rates) / total_ratings, 2) if total_ratings > 0 else None
+    context['avg_rating'] = avg_rating
+    context['total_ratings'] = total_ratings
 
     if request.method == "POST":
         name = request.POST.get('name', '').strip()

@@ -113,6 +113,7 @@
           </span>
           <span>Số đánh giá: <span class="fw-bold">{{ d.num_ratings }}</span></span>
           <span>Số lượng mua: <span class="fw-bold">{{ d.total_quantity }}</span></span>
+          {# Số lượng mua chỉ tính từ các invoice có status = 2 #}
         </div>
       </div>
       <div class="d-flex flex-column gap-2 align-items-end">

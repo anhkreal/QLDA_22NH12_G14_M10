@@ -21,20 +21,26 @@
       <h3 class="mb-3 fw-bold text-dark">{{ dish.name }}</h3>
       <div class="mb-3 text-muted fs-5 d-flex align-items-center flex-wrap gap-3">
         <span class="text-warning fs-4">
-          {% with avg=dish.avg_rating|default:0 %}
+          {% if avg_star %}
             {% for i in "12345"|make_list %}
-              {% if avg|floatformat:1 >= forloop.counter %}
+              {% if avg_star|floatformat:0 >= forloop.counter %}
                 <i class="fas fa-star"></i>
-              {% elif avg|floatformat:1 >= forloop.counter0|add:0.5 and avg|floatformat:1 < forloop.counter %}
+              {% elif avg_star|floatformat:1 >= forloop.counter0|add:0.5 and avg_star|floatformat:0 < forloop.counter %}
                 <i class="fas fa-star-half-alt"></i>
               {% else %}
                 <i class="far fa-star"></i>
               {% endif %}
             {% endfor %}
-          {% endwith %}
+            <span class="ms-2 text-dark fw-semibold">{{ avg_star|floatformat:1 }}/5</span>
+          {% else %}
+            {% for i in "12345"|make_list %}
+              <i class="far fa-star"></i>
+            {% endfor %}
+            <span class="ms-2 text-dark fw-semibold">0/5</span>
+          {% endif %}
         </span>
         <span>| {{ reviews|length }} đánh giá</span>
-        <span>| Đã bán: {{ dish.sold|default:0 }}</span>
+        <span>| Đã bán: {{ sold|default:0 }}</span>
       </div>
       <div class="mb-3">
         <span class="fs-2 fw-bold text-danger">{{ dish.price|floatformat:0 }}đ</span>
@@ -112,12 +118,15 @@
           <div>
             <span class="text-warning fs-5">
               {% for i in "12345"|make_list %}
-                {% if review.star|default:0 >= i %}
+                {% if review.star|floatformat:0 >= forloop.counter %}
                   <i class="fas fa-star"></i>
+                {% elif review.star|floatformat:1 >= forloop.counter0|add:0.5 and review.star|floatformat:0 < forloop.counter %}
+                  <i class="fas fa-star-half-alt"></i>
                 {% else %}
                   <i class="far fa-star"></i>
                 {% endif %}
               {% endfor %}
+              <span class="ms-1 text-dark">{{ review.star|floatformat:1 }}/5</span>
             </span>
           </div>
         </div>

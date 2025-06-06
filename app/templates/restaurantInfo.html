@@ -8,6 +8,24 @@
   <div class="col-md-8 col-lg-7">
     <div class="card shadow-sm p-4">
       <h3 class="mb-4 text-center text-info"><i class="fas fa-store me-2"></i>Thông tin nhà hàng</h3>
+      <!-- Luôn hiển thị đánh giá trung bình và số lượng đánh giá, kể cả khi chưa có đánh giá -->
+      <div class="mb-3 text-center">
+        <span class="fw-bold text-secondary">Đánh giá trung bình:</span>
+        <span class="text-warning" style="font-size:1.2em;">
+          {% with avg=avg_rating|default:0 %}
+            {% for i in "12345" %}
+              {% if i|add:'0' <= avg|stringformat:"d" %}
+                ★
+              {% else %}
+                ☆
+              {% endif %}
+            {% endfor %}
+          {% endwith %}
+        </span>
+        <span class="ms-2">
+          ({{ avg_rating|default:"0" }}/5, {{ total_ratings|default:"0" }} đánh giá)
+        </span>
+      </div>
       <!-- Thông báo -->
       <div id="restaurant-alert" class="alert d-none" role="alert"></div>
       <form id="restaurant-form" enctype="multipart/form-data" autocomplete="off">
