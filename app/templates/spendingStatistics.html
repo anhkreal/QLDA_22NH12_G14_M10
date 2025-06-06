@@ -5,11 +5,51 @@
 
 <h3 class="mb-4 fw-bold text-dark">Thống kê chi tiêu</h3>
 
+<<<<<<< HEAD
+<!-- Thống kê tổng quan -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card bg-warning text-white">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-money-bill-wave me-2"></i>Tổng chi tiêu</h5>
+        <h3 class="mb-0">{{ total_spending|floatformat:0 }}đ</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card bg-info text-white">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-shopping-cart me-2"></i>Tổng đơn hàng</h5>
+        <h3 class="mb-0">{{ total_orders }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+=======
+>>>>>>> main
 <div class="card shadow-sm p-4 mb-4">
   <div class="d-flex flex-wrap align-items-center mb-3">
     <span class="me-3 fw-semibold">Xem theo:</span>
     <button id="btn-day" class="btn btn-outline-warning me-2 active">Ngày</button>
+<<<<<<< HEAD
+    <button id="btn-week" class="btn btn-outline-warning me-2">Tuần</button>
+    <button id="btn-month" class="btn btn-outline-warning me-2">Tháng</button>
+    <button id="btn-year" class="btn btn-outline-warning me-3">Năm</button>
+
+    <!-- Dropdown chọn năm cụ thể -->
+    <div class="d-flex align-items-center" id="year-selector" style="display: none;">
+      <span class="me-2 fw-semibold">Chọn năm:</span>
+      <select id="select-year" class="form-select" style="width: auto;">
+        {% for year in available_years %}
+        <option value="{{ year }}">{{ year }}</option>
+        {% endfor %}
+      </select>
+      <button id="btn-view-year" class="btn btn-warning ms-2">Xem</button>
+    </div>
+=======
     <button id="btn-week" class="btn btn-outline-warning">Tuần</button>
+>>>>>>> main
   </div>
   <canvas id="spendingChart" height="350"></canvas>
 </div>
@@ -53,10 +93,25 @@ function randomData(length, min, max) {
   return Array.from({length}, () => Math.floor(Math.random() * (max - min + 1)) + min);
 }
 
+<<<<<<< HEAD
+// Lấy dữ liệu từ backend
+let dayLabels = {{ day_labels|safe }};
+let weekLabels = {{ week_labels|safe }};
+let monthLabels = {{ month_labels|safe }};
+let yearLabels = {{ year_labels|safe }};
+let dayData = {{ day_data|safe }};
+let weekData = {{ week_data|safe }};
+let monthData = {{ month_data|safe }};
+let yearData = {{ year_data|safe }};
+
+// Dữ liệu chi tiết theo năm (để chọn năm cụ thể)
+let yearlyDetailData = {{ yearly_detail_data|safe }};
+=======
 let dayLabels = getDayLabels();
 let weekLabels = getWeekLabels();
 let dayData = randomData(31, 50000, 500000);
 let weekData = randomData(52, 300000, 3000000);
+>>>>>>> main
 
 const ctx = document.getElementById('spendingChart').getContext('2d');
 let chart = new Chart(ctx, {
@@ -93,25 +148,90 @@ let chart = new Chart(ctx, {
   }
 });
 
+<<<<<<< HEAD
+// Hàm để reset tất cả button về trạng thái không active
+function resetButtons() {
+  document.getElementById('btn-day').classList.remove('active');
+  document.getElementById('btn-week').classList.remove('active');
+  document.getElementById('btn-month').classList.remove('active');
+  document.getElementById('btn-year').classList.remove('active');
+
+  // Ẩn dropdown chọn năm khi chuyển sang view khác
+  document.getElementById('year-selector').style.display = 'none';
+
+  // Reset lại label của chart
+  chart.data.datasets[0].label = 'Số tiền chi tiêu (VNĐ)';
+}
+
+document.getElementById('btn-day').onclick = function() {
+  resetButtons();
+  this.classList.add('active');
+=======
 document.getElementById('btn-day').onclick = function() {
   this.classList.add('active');
   document.getElementById('btn-week').classList.remove('active');
+>>>>>>> main
   chart.data.labels = dayLabels;
   chart.data.datasets[0].data = dayData;
   chart.update();
 };
+<<<<<<< HEAD
+
+document.getElementById('btn-week').onclick = function() {
+  resetButtons();
+  this.classList.add('active');
+=======
 document.getElementById('btn-week').onclick = function() {
   this.classList.add('active');
   document.getElementById('btn-day').classList.remove('active');
+>>>>>>> main
   chart.data.labels = weekLabels;
   chart.data.datasets[0].data = weekData;
   chart.update();
 };
+<<<<<<< HEAD
+
+document.getElementById('btn-month').onclick = function() {
+  resetButtons();
+  this.classList.add('active');
+  chart.data.labels = monthLabels;
+  chart.data.datasets[0].data = monthData;
+  chart.update();
+};
+
+document.getElementById('btn-year').onclick = function() {
+  resetButtons();
+  this.classList.add('active');
+  chart.data.labels = yearLabels;
+  chart.data.datasets[0].data = yearData;
+  chart.update();
+
+  // Hiển thị dropdown chọn năm
+  document.getElementById('year-selector').style.display = 'flex';
+};
+
+// Xử lý khi chọn năm cụ thể
+document.getElementById('btn-view-year').onclick = function() {
+  const selectedYear = document.getElementById('select-year').value;
+  if (yearlyDetailData[selectedYear]) {
+    const yearDetail = yearlyDetailData[selectedYear];
+    chart.data.labels = yearDetail.labels;
+    chart.data.datasets[0].data = yearDetail.data;
+    chart.data.datasets[0].label = `Chi tiêu năm ${selectedYear} (VNĐ)`;
+    chart.update();
+  }
+};
+=======
+>>>>>>> main
 </script>
 
 <style>
 /* filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html */
+<<<<<<< HEAD
+#btn-day.active, #btn-week.active, #btn-month.active, #btn-year.active {
+=======
 #btn-day.active, #btn-week.active {
+>>>>>>> main
   color: #fff;
   background-color: #ffc107;
   border-color: #ffc107;
