@@ -5,6 +5,7 @@
 
 <h3 class="mb-4 fw-bold text-dark">Thống kê chi tiêu</h3>
 
+<<<<<<< HEAD
 <!-- Thống kê tổng quan -->
 <div class="row mb-4">
   <div class="col-md-6">
@@ -25,10 +26,13 @@
   </div>
 </div>
 
+=======
+>>>>>>> main
 <div class="card shadow-sm p-4 mb-4">
   <div class="d-flex flex-wrap align-items-center mb-3">
     <span class="me-3 fw-semibold">Xem theo:</span>
     <button id="btn-day" class="btn btn-outline-warning me-2 active">Ngày</button>
+<<<<<<< HEAD
     <button id="btn-week" class="btn btn-outline-warning me-2">Tuần</button>
     <button id="btn-month" class="btn btn-outline-warning me-2">Tháng</button>
     <button id="btn-year" class="btn btn-outline-warning me-3">Năm</button>
@@ -43,6 +47,9 @@
       </select>
       <button id="btn-view-year" class="btn btn-warning ms-2">Xem</button>
     </div>
+=======
+    <button id="btn-week" class="btn btn-outline-warning">Tuần</button>
+>>>>>>> main
   </div>
   <canvas id="spendingChart" height="350"></canvas>
 </div>
@@ -86,6 +93,7 @@ function randomData(length, min, max) {
   return Array.from({length}, () => Math.floor(Math.random() * (max - min + 1)) + min);
 }
 
+<<<<<<< HEAD
 // Lấy dữ liệu từ backend
 let dayLabels = {{ day_labels|safe }};
 let weekLabels = {{ week_labels|safe }};
@@ -98,6 +106,12 @@ let yearData = {{ year_data|safe }};
 
 // Dữ liệu chi tiết theo năm (để chọn năm cụ thể)
 let yearlyDetailData = {{ yearly_detail_data|safe }};
+=======
+let dayLabels = getDayLabels();
+let weekLabels = getWeekLabels();
+let dayData = randomData(31, 50000, 500000);
+let weekData = randomData(52, 300000, 3000000);
+>>>>>>> main
 
 const ctx = document.getElementById('spendingChart').getContext('2d');
 let chart = new Chart(ctx, {
@@ -134,6 +148,7 @@ let chart = new Chart(ctx, {
   }
 });
 
+<<<<<<< HEAD
 // Hàm để reset tất cả button về trạng thái không active
 function resetButtons() {
   document.getElementById('btn-day').classList.remove('active');
@@ -151,18 +166,30 @@ function resetButtons() {
 document.getElementById('btn-day').onclick = function() {
   resetButtons();
   this.classList.add('active');
+=======
+document.getElementById('btn-day').onclick = function() {
+  this.classList.add('active');
+  document.getElementById('btn-week').classList.remove('active');
+>>>>>>> main
   chart.data.labels = dayLabels;
   chart.data.datasets[0].data = dayData;
   chart.update();
 };
+<<<<<<< HEAD
 
 document.getElementById('btn-week').onclick = function() {
   resetButtons();
   this.classList.add('active');
+=======
+document.getElementById('btn-week').onclick = function() {
+  this.classList.add('active');
+  document.getElementById('btn-day').classList.remove('active');
+>>>>>>> main
   chart.data.labels = weekLabels;
   chart.data.datasets[0].data = weekData;
   chart.update();
 };
+<<<<<<< HEAD
 
 document.getElementById('btn-month').onclick = function() {
   resetButtons();
@@ -194,11 +221,17 @@ document.getElementById('btn-view-year').onclick = function() {
     chart.update();
   }
 };
+=======
+>>>>>>> main
 </script>
 
 <style>
 /* filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html */
+<<<<<<< HEAD
 #btn-day.active, #btn-week.active, #btn-month.active, #btn-year.active {
+=======
+#btn-day.active, #btn-week.active {
+>>>>>>> main
   color: #fff;
   background-color: #ffc107;
   border-color: #ffc107;

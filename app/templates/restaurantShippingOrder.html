@@ -5,16 +5,27 @@
 
 <h3 class="mb-4 fw-bold text-dark">Đơn hàng đang giao</h3>
 
+<<<<<<< HEAD
 <!-- Đơn hàng 1 -->
+=======
+{% for order in orders %}
+>>>>>>> main
 <div class="card mb-4 shadow-sm border-info border-2">
   <div class="card-body p-0">
     <!-- Dòng đầu: Thông tin khách hàng và trạng thái -->
     <div class="d-flex flex-wrap align-items-center justify-content-between bg-info bg-opacity-10 px-3 py-3 border-bottom rounded-top">
       <div>
+<<<<<<< HEAD
         <span class="fw-bold fs-5 text-dark">Nguyễn Văn A</span>
         <span class="ms-3"><i class="fas fa-phone"></i> 0912 345 678</span>
         <span class="ms-3"><i class="fas fa-map-marker-alt"></i> 123 Đường Số 5, Quận 10</span>
         <span class="ms-3"><i class="fas fa-clock"></i> Đặt lúc: 10:30 01/06/2024</span>
+=======
+        <span class="fw-bold fs-5 text-dark">{{ order.customer_name }}</span>
+        <span class="ms-3"><i class="fas fa-phone"></i> {{ order.phone }}</span>
+        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> {{ order.address }}</span>
+        <span class="ms-3"><i class="fas fa-clock"></i> Đặt lúc: {{ order.order_time }}</span>
+>>>>>>> main
       </div>
       <div class="d-flex align-items-center mt-2 mt-md-0">
         <span class="badge bg-info text-dark">Chờ nhận hàng</span>
@@ -22,10 +33,15 @@
     </div>
     <!-- Danh sách món ăn -->
     <div class="p-3">
+<<<<<<< HEAD
+=======
+      {% for item in order.items %}
+>>>>>>> main
       <div class="d-flex align-items-center mb-2">
         <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
              class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
         <div class="flex-grow-1">
+<<<<<<< HEAD
           <div class="fw-semibold">Gà Rán Giòn Cay</div>
           <div class="text-muted small">Số lượng: 2 | Đơn giá: 45.000đ | Đơn vị: Phần</div>
         </div>
@@ -75,5 +91,22 @@
     </div>
   </div>
 </div>
+=======
+          <div class="fw-semibold">{{ item.name }}</div>
+          <div class="text-muted small">Số lượng: {{ item.quantity }} | Đơn giá: {{ item.price|floatformat:0 }}đ | Đơn vị: {{ item.unit }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <!-- Tổng tiền -->
+    <div class="bg-light border-top px-3 py-2 d-flex justify-content-end rounded-bottom">
+      <span class="fw-bold fs-5">Tổng tiền: <span class="text-danger">{{ order.total_payment|floatformat:0 }}đ</span></span>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="alert alert-info">Không có đơn hàng đang giao.</div>
+{% endfor %}
+>>>>>>> main
 
 {% endblock %}

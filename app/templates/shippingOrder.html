@@ -3,12 +3,17 @@
 {% block content %}
 {% block title %}Danh sách đơn hàng{% endblock %}
 
+<<<<<<< HEAD
 <!-- Đơn hàng chờ xác nhận -->
+=======
+{% for order in orders %}
+>>>>>>> main
 <div class="card mb-4 shadow-sm border-warning border-2">
   <div class="card-body p-0">
     <!-- Phần đầu: Thông tin nhà hàng và trạng thái -->
     <div class="d-flex flex-wrap align-items-center justify-content-between bg-warning bg-opacity-25 px-3 py-3 border-bottom rounded-top">
       <div>
+<<<<<<< HEAD
         <span class="fw-bold fs-5 text-dark">Nhà hàng Gà Rán Leo</span>
         <span class="ms-3"><i class="fas fa-phone"></i> 0901 234 567</span>
         <span class="ms-3"><i class="fas fa-map-marker-alt"></i> 123 Đường Số 5, Quận 10</span>
@@ -17,14 +22,30 @@
       <div class="d-flex align-items-center mt-2 mt-md-0">
         <span class="badge bg-warning text-dark me-3">Chờ xác nhận</span>
         <button class="btn btn-success btn-sm">Xác nhận thanh toán</button>
+=======
+        <span class="fw-bold fs-5 text-dark">{{ order.restaurant_name }}</span>
+        <span class="ms-3"><i class="fas fa-phone"></i> {{ order.customer_phone }}</span>
+        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> {{ order.customer_address }}</span>
+        <span class="ms-3"><i class="fas fa-clock"></i> Đặt lúc: {{ order.order_time }}</span>
+      </div>
+      <div class="d-flex align-items-center mt-2 mt-md-0">
+        <span class="badge bg-warning text-dark me-3">Chờ xác nhận</span>
+        <button class="btn btn-success btn-sm me-2" onclick="updateInvoiceStatus('{{ order.invoice_id }}', 1, this)">Xác nhận</button>
+        <button class="btn btn-danger btn-sm" onclick="updateInvoiceStatus('{{ order.invoice_id }}', 2, this)">Từ chối</button>
+>>>>>>> main
       </div>
     </div>
     <!-- Phần 2: Danh sách món ăn -->
     <div class="p-3">
+<<<<<<< HEAD
+=======
+      {% for dish in order.dishes %}
+>>>>>>> main
       <div class="d-flex align-items-center mb-2">
         <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
              class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
         <div class="flex-grow-1">
+<<<<<<< HEAD
           <div class="fw-semibold">Gà Rán Giòn Cay</div>
           <div class="text-muted small">Số lượng: 2 | Đơn giá: 45.000đ | Đơn vị: Phần</div>
         </div>
@@ -77,5 +98,49 @@
     </div>
   </div>
 </div>
+=======
+          <div class="fw-semibold">{{ dish.name }}</div>
+          <div class="text-muted small">Số lượng: {{ dish.quantity }} | Đơn giá: {{ dish.price|floatformat:0 }}đ | Đơn vị: {{ dish.unit }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <!-- Phần 3: Tổng tiền -->
+    <div class="bg-light border-top px-3 py-2 d-flex justify-content-end rounded-bottom">
+      <span class="fw-bold fs-5">Tổng tiền: <span class="text-danger">{{ order.total_payment|floatformat:0 }}đ</span></span>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="alert alert-info">Không có đơn hàng chờ xác nhận.</div>
+{% endfor %}
+
+<script>
+function updateInvoiceStatus(invoiceId, status, btn) {
+  btn.disabled = true;
+  fetch('/api/update-invoice-status/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ invoice_id: invoiceId, status: status })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      btn.closest('.card').remove();
+    } else {
+      alert(data.message || 'Có lỗi xảy ra!');
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    alert('Có lỗi xảy ra!');
+    btn.disabled = false;
+  });
+}
+</script>
+>>>>>>> main
 
 {% endblock %}

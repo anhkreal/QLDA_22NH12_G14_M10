@@ -58,6 +58,12 @@
 
 <!-- PHẦN 2: Danh sách món ăn -->
 <h4 class="mb-3 fw-bold text-dark">Danh sách món ăn</h4>
+<<<<<<< HEAD
+=======
+{% if query %}
+  <div class="mb-2 text-secondary">Kết quả tìm kiếm cho: <span class="fw-bold">"{{ query }}"</span></div>
+{% endif %}
+>>>>>>> main
 {% if dish_message %}
   <div class="alert alert-info">{{ dish_message }}</div>
 {% endif %}
@@ -426,7 +432,11 @@
               }, 1000);
             } else {
               alertBox.textContent = data.message || "Xóa món ăn thất bại!";
+<<<<<<< HEAD
               alertBox.className = "dish-alert alert alert-danger mt-2";
+=======
+              alertBox className = "dish-alert alert alert-danger mt-2";
+>>>>>>> main
               alertBox.classList.remove('d-none');
             }
           } catch (err) {
