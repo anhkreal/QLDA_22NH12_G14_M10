@@ -6,8 +6,9 @@ urlpatterns = [
     path('dish-detail/', views.dish_detail, name='dish-detail'),
     path('restaurant-view-details/', views.restaurant_view_details, name='restaurant-view-details'),
     path('cart/', views.cart, name='cart'),
-    path('shipping-order/', views.shipping_order, name='shipping-order'),
+    path('shipping-order/', views.shipping_orders_view, name='shipping-orders'),
     path('order-history/', views.order_history, name='order-history'),
+    path('api/submit-rating/', views.api_submit_rating, name='api-submit-rating'),
     path('spending-statistics/', views.spending_statistics, name='spending-statistics'),
     path('change-password/', views.change_password, name='change-password'),
     path('login/', views.login, name='login'),
@@ -15,8 +16,11 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('customer-info/', views.customer_info, name='customer-info'),
     path('restaurant-owner-home/', views.restaurant_owner_home, name='restaurant-owner-home'),
-    path('restaurant-pending-order/', views.restaurant_pending_order, name='restaurant-pending-order'),
+    path('restaurant-pending-order/', views.pending_orders_view, name='pending-orders'),
+    path('restaurant-pending-order/confirm/<str:invoice_id>/', views.confirm_pending_order, name='confirm-pending-order'),
+    path('restaurant-pending-order/reject/<str:invoice_id>/', views.reject_pending_order, name='reject-pending-order'),
     path('restaurant-shipping-order/', views.restaurant_shipping_order, name='restaurant-shipping-order'),
+    path('restaurant-shipping-orders/', views.shipping_orders_view, name='restaurant-shipping-orders'),
     path('restaurant-order-history/', views.restaurant_order_history, name='restaurant-order-history'),
     path('revenue-statistics/', views.revenue_statistics, name='revenue-statistics'),
     path('logout/', views.logout, name='logout'),
@@ -27,6 +31,8 @@ urlpatterns = [
     path('api/update-dish/', views.api_update_dish, name='api-update-dish'),
     path('api/delete-dish/', views.api_delete_dish, name='api-delete-dish'),
     path('api/dish-reviews/', views.api_dish_reviews, name='api-dish-reviews'),
+    path('api/update-invoice-status/', views.api_update_invoice_status, name='api-update-invoice-status'),
     path('restaurants/', views.restaurant_list, name='restaurant-list'),
-
+    path('api/delete-cart-item/', views.api_delete_cart_item, name='api-delete-cart-item'),
 ]
+
