@@ -1,90 +1,74 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% block title %}Giỏ hàng{% endblock %}
 {% block content %}
 
 <!-- Danh sách các quán ăn trong giỏ hàng -->
-<div class="mb-5">
-  <!-- Quán ăn 1 -->
-  <div class="card mb-4 shadow-sm">
+<div class="mb-5" id="cart-list">
+  {% for group in restaurants %}
+  <div class="card mb-4 shadow-sm cart-restaurant" data-restaurant-id="{{ group.restaurant.id }}">
     <div class="card-body p-0">
       <!-- Header -->
       <div class="d-flex align-items-center bg-light px-3 py-2 border-bottom fw-bold">
-        <input type="checkbox" class="form-check-input me-3">
-        <span class="me-3 fs-5">Nhà hàng Gà Rán Leo</span>
-        <span class="me-3" style="width:70px;"></span><!-- Cột hình ảnh trống ở header -->
+        {# Đánh dấu checked nếu tất cả item đều checked #}
+        {% with all_checked=True %}
+          {% for item in group.items %}
+            {% if not item.checked %}
+              {% with all_checked=False %}
+              {% endwith %}
+            {% endif %}
+          {% endfor %}
+          <input type="checkbox" class="form-check-input me-3 restaurant-checkbox"
+                 {% if all_checked and group.items %}checked{% endif %}>
+        {% endwith %}
+        <span class="me-3 fs-5">{{ group.restaurant.name }}</span>
+        <span class="me-3" style="width:70px;"></span>
         <span class="ms-auto d-none d-md-block" style="width:120px;">Đơn giá</span>
         <span class="d-none d-md-block" style="width:90px;">Đơn vị</span>
         <span class="d-none d-md-block" style="width:120px;">Số lượng</span>
         <span class="d-none d-md-block" style="width:80px;">Thao tác</span>
       </div>
-      <!-- Món ăn 1 -->
-      <div class="d-flex align-items-center px-3 py-2 border-bottom">
-        <input type="checkbox" class="form-check-input me-3">
-        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
-             alt="Gà Rán Giòn Cay" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
-        <span class="me-3 flex-grow-1">Gà Rán Giòn Cay</span>
-        <span class="ms-auto" style="width:120px;">45.000đ</span>
-        <span style="width:90px;">Phần</span>
+      {% for item in group.items %}
+      <div class="d-flex align-items-center px-3 py-2 border-bottom cart-item-row"
+           data-dish-cart-id="{{ item.dish_cart.id }}">
+        <input type="checkbox" class="form-check-input me-3 dish-checkbox"
+               {% if item.checked %}checked{% endif %}>
+        {% if item.dish.image %}
+        <img src="data:image/jpeg;base64,{{ item.dish.image|b64encode }}"
+             alt="{{ item.dish.name }}" class="me-3 rounded"
+             style="width: 60px; height: 60px; object-fit: cover;">
+        {% else %}
+        <img src="https://via.placeholder.com/60x60?text=No+Image"
+             alt="{{ item.dish.name }}" class="me-3 rounded"
+             style="width: 60px; height: 60px; object-fit: cover;">
+        {% endif %}
+        <span class="me-3 flex-grow-1">{{ item.dish.name }}</span>
+        <span class="ms-auto" style="width:120px;">{{ item.dish.price|floatformat:0 }}đ</span>
+        <span style="width:90px;">{{ item.dish.unit }}</span>
         <span style="width:120px;">
-          <input type="number" class="form-control form-control-sm d-inline-block" value="1" min="1" style="width:70px;">
+          <input type="number" class="form-control form-control-sm d-inline-block quantity-input"
+                 value="{{ item.quantity }}" min="1" style="width:70px;">
         </span>
         <span style="width:80px;">
-          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+          <button class="btn btn-sm btn-outline-danger btn-delete-cart-item">Xóa</button>
         </span>
       </div>
-      <!-- Món ăn 2 -->
-      <div class="d-flex align-items-center px-3 py-2">
-        <input type="checkbox" class="form-check-input me-3">
-        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" alt="Khoai Tây Chiên" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
-        <span class="me-3 flex-grow-1">Khoai Tây Chiên</span>
-        <span class="ms-auto" style="width:120px;">20.000đ</span>
-        <span style="width:90px;">Phần</span>
-        <span style="width:120px;">
-          <input type="number" class="form-control form-control-sm d-inline-block" value="2" min="1" style="width:70px;">
-        </span>
-        <span style="width:80px;">
-          <button class="btn btn-sm btn-outline-danger">Xóa</button>
-        </span>
-      </div>
+      {% endfor %}
     </div>
   </div>
-  <!-- Quán ăn 2 -->
-  <div class="card mb-4 shadow-sm">
-    <div class="card-body p-0">
-      <div class="d-flex align-items-center bg-light px-3 py-2 border-bottom fw-bold">
-        <input type="checkbox" class="form-check-input me-3">
-        <span class="me-3 fs-5">Bún Bò Huế 123</span>
-        <span class="me-3" style="width:70px;"></span><!-- Cột hình ảnh trống ở header -->
-        <span class="ms-auto d-none d-md-block" style="width:120px;">Đơn giá</span>
-        <span class="d-none d-md-block" style="width:90px;">Đơn vị</span>
-        <span class="d-none d-md-block" style="width:120px;">Số lượng</span>
-        <span class="d-none d-md-block" style="width:80px;">Thao tác</span>
-      </div>
-      <div class="d-flex align-items-center px-3 py-2">
-        <input type="checkbox" class="form-check-input me-3">
-        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" alt="Bún Bò Huế Đặc Biệt" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
-        <span class="me-3 flex-grow-1">Bún Bò Huế Đặc Biệt</span>
-        <span class="ms-auto" style="width:120px;">50.000đ</span>
-        <span style="width:90px;">Tô</span>
-        <span style="width:120px;">
-          <input type="number" class="form-control form-control-sm d-inline-block" value="1" min="1" style="width:70px;">
-        </span>
-        <span style="width:80px;">
-          <button class="btn btn-sm btn-outline-danger">Xóa</button>
-        </span>
-      </div>
-    </div>
-  </div>
+  {% empty %}
+  <div class="alert alert-info">Giỏ hàng của bạn đang trống.</div>
+  {% endfor %}
 </div>
 
 <!-- Bottom Bar: Tổng tiền và nút đặt hàng -->
 <div class="bg-white border-top shadow-lg py-3 px-3 position-fixed bottom-0 start-0 w-100" style="z-index:1050;">
   <div class="container d-flex justify-content-between align-items-center">
     <div class="fs-5 fw-bold">
-      Tổng tiền: <span class="text-danger fs-4">115.000đ</span>
+      Tổng tiền: <span class="text-danger fs-4" id="cart-total">{{ total|floatformat:0 }}đ</span>
     </div>
-    <button class="btn btn-warning btn-lg px-4 fw-bold">
+    <button class="btn btn-warning btn-lg px-4 fw-bold" id="btn-order" {% if not restaurants %}disabled{% endif %}>
       Đặt hàng
     </button>
   </div>
@@ -95,5 +79,91 @@
     padding-bottom: 80px !important;
   }
 </style>
+
+<script>
+// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\cart.html
+
+// Helper: format number to VND
+function formatVND(num) {
+  return (num || 0).toLocaleString('vi-VN') + 'đ';
+}
+
+function updateCartTotal() {
+  let total = 0;
+  document.querySelectorAll('.cart-item-row').forEach(function(row) {
+    const checked = row.querySelector('.dish-checkbox').checked;
+    if (checked) {
+      const price = parseInt(row.querySelector('.ms-auto').textContent.replace(/\D/g, '')) || 0;
+      const qty = parseInt(row.querySelector('.quantity-input').value) || 1;
+      total += price * qty;
+    }
+  });
+  document.getElementById('cart-total').textContent = formatVND(total);
+}
+
+// Xử lý chọn checkbox nhà hàng và món ăn
+document.querySelectorAll('.cart-restaurant').forEach(function(card) {
+  const restCheckbox = card.querySelector('.restaurant-checkbox');
+  const dishCheckboxes = card.querySelectorAll('.dish-checkbox');
+  // Khi click checkbox nhà hàng
+  restCheckbox.addEventListener('change', function() {
+    dishCheckboxes.forEach(cb => { cb.checked = restCheckbox.checked; });
+    updateCartTotal();
+    // TODO: Gửi AJAX cập nhật trạng thái checked cho toàn bộ món ăn trong nhà hàng này
+  });
+  // Khi click checkbox từng món
+  dishCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if ([...dishCheckboxes].every(x => x.checked)) {
+        restCheckbox.checked = true;
+      } else {
+        restCheckbox.checked = false;
+      }
+      updateCartTotal();
+      // TODO: Gửi AJAX cập nhật trạng thái checked cho món ăn này
+    });
+  });
+});
+
+// Khi thay đổi số lượng
+document.querySelectorAll('.quantity-input').forEach(function(input) {
+  input.addEventListener('change', function() {
+    if (parseInt(this.value) < 1) this.value = 1;
+    updateCartTotal();
+    // TODO: Gửi AJAX cập nhật số lượng cho món ăn này
+  });
+});
+
+// Khi xóa món ăn
+document.querySelectorAll('.btn-delete-cart-item').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const row = btn.closest('.cart-item-row');
+    const dishCartId = row.getAttribute('data-dish-cart-id');
+    // Gửi AJAX xóa dish_invoice
+    fetch("{% url 'api-delete-cart-item' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "dish_cart_id=" + encodeURIComponent(dishCartId)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        row.remove();
+        updateCartTotal();
+      } else {
+        alert(data.message || "Xóa món ăn thất bại!");
+      }
+    })
+    .catch(() => alert("Có lỗi khi xóa món ăn!"));
+  });
+});
+
+// Cập nhật tổng tiền ban đầu
+updateCartTotal();
+
+</script>
 
 {% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}Danh sách nhà hàng{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Danh sách nhà hàng</h2>
+  <form method="get" class="mb-3 d-flex align-items-center">
+    <input type="text" name="q" class="form-control me-2" placeholder="Tìm kiếm nhà hàng..." value="{{ query }}" style="max-width: 300px;">
+    <button type="submit" class="btn btn-primary me-2">Tìm kiếm</button>
+    <a href="{% url 'restaurant-list' %}" class="btn btn-secondary">Reload</a>
+  </form>
+  <div class="row">
+    {% for restaurant in restaurants %}
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 shadow-sm">
+        {% if restaurant.image %}
+        <img src="data:image/jpeg;base64,{{ restaurant.image|b64encode }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+        {% else %}
+        <img src="https://via.placeholder.com/400x200?text=No+Image" class="card-img-top" style="height: 200px; object-fit: cover;">
+        {% endif %}
+        <div class="card-body">
+          <h5 class="card-title">{{ restaurant.name }}</h5>
+          <p class="card-text text-muted">{{ restaurant.decription|default:"Không có mô tả" }}</p>
+          <p class="card-text"><i class="fas fa-map-marker-alt"></i> {{ restaurant.street }}, {{ restaurant.district }}</p>
+          <a href="{% url 'restaurant-view-details' %}?id={{ restaurant.id }}" class="btn btn-outline-success">Xem chi tiết</a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="alert alert-warning">Không tìm thấy nhà hàng nào.</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

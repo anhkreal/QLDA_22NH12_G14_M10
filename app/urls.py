@@ -32,5 +32,4 @@ urlpatterns = [
     path('api/delete-dish/', views.api_delete_dish, name='api-delete-dish'),
     path('api/dish-reviews/', views.api_dish_reviews, name='api-dish-reviews'),
     path('api/update-invoice-status/', views.api_update_invoice_status, name='api-update-invoice-status'),
-
 ]
