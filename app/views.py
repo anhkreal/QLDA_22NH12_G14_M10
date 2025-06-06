@@ -474,7 +474,7 @@ def restaurant_owner_home(request):
             else:
                 context['dish_message'] = "Hiện tại nhà hàng chưa có món ăn nào"
 
-    return render(request, 'restaurantOwnerHome', context)
+    return render(request, 'restaurantOwnerHome.html', context)
 
 def restaurant_pending_order(request):
     return render(request, 'restaurantPendingOrder.html')
