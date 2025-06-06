@@ -1,71 +1,73 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% block title %}Chi tiết món ăn{% endblock %}
 {% block content %}
-
 <!-- PHẦN 1: Thông tin món ăn -->
 <div class="row mb-5 shadow-sm bg-white p-4 rounded">
   <!-- Ảnh minh họa -->
   <div class="col-md-5 text-center">
-    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% if dish and dish.image %}
+    <img src="data:image/jpeg;base64,{{ dish.image|b64encode }}" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% else %}
+    <img src="https://via.placeholder.com/300x300?text=No+Image" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% endif %}
   </div>
-
   <!-- Thông tin chi tiết -->
   <div class="col-md-7 d-flex flex-column justify-content-center">
     <div class="ps-md-4">
-      <h3 class="mb-3 fw-bold text-dark">Gà Rán Giòn Cay</h3>
-
+      <h3 class="mb-3 fw-bold text-dark">{{ dish.name }}</h3>
       <div class="mb-3 text-muted fs-5">
         <span class="text-warning fs-4">
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="far fa-star"></i>
+          {% for i in "12345"|make_list %}
+            {% if dish.avg_rating and i|add:'0' <= dish.avg_rating %}
+              <i class="fas fa-star"></i>
+            {% else %}
+              <i class="far fa-star"></i>
+            {% endif %}
+          {% endfor %}
         </span>
-        <span class="mx-2">| 123 đánh giá |</span>
-        <span>Đã bán: 456</span>
+        <span class="mx-2">| {{ reviews|length }} đánh giá |</span>
       </div>
-
       <div class="mb-3">
-        <span class="fs-2 fw-bold text-danger">45.000đ</span>
+        <span class="fs-2 fw-bold text-danger">{{ dish.price|floatformat:0 }}đ</span>
       </div>
-
       <div class="mb-4 d-flex align-items-center">
         <label for="quantity" class="me-3 mb-0 fs-5">Số lượng:</label>
         <input type="number" id="quantity" class="form-control shadow-sm" value="1" min="1" style="width: 100px;">
       </div>
-
-      <button class="btn btn-warning btn-lg px-4 shadow">
+      {% if user and user.district %}
+      <button class="btn btn-warning btn-lg px-4 shadow add-to-cart-btn" data-dish-id="{{ dish.id }}">
         <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
       </button>
+      {% else %}
+      <button class="btn btn-warning btn-lg px-4 shadow add-to-cart-btn disabled" onclick="alert('Bạn cần cập nhật địa chỉ để sử dụng chức năng này!'); return false;">
+        <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
+      </button>
+      {% endif %}
     </div>
   </div>
 </div>
-
 <!-- PHẦN 2: Thông tin nhà hàng -->
+{% if restaurant %}
 <div class="card shadow-sm p-4 border-0 rounded bg-light mb-4">
   <div class="row align-items-center">
-    <!-- Ảnh minh họa nhà hàng -->
     <div class="col-md-2 text-center mb-3 mb-md-0">
-      <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg"
-           class="rounded-circle border"
-           alt="Ảnh nhà hàng"
-           style="width: 80px; height: 80px; object-fit: cover;">
+      {% if restaurant.image %}
+      <img src="data:image/jpeg;base64,{{ restaurant.image|b64encode }}" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
+      {% else %}
+      <img src="https://via.placeholder.com/80x80?text=No+Image" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
+      {% endif %}
     </div>
-
-    <!-- Tên nhà hàng và nút -->
     <div class="col-md-5">
-      <div class="fw-bold fs-5 text-dark">Nhà hàng Gà Rán Leo</div>
-      <a href="#" class="btn btn-sm btn-outline-warning mt-2">
+      <div class="fw-bold fs-5 text-dark">{{ restaurant.name }}</div>
+      <a href="{% url 'restaurant-view-details' %}?id={{ restaurant.id }}" class="btn btn-sm btn-outline-warning mt-2">
         <i class="fas fa-store"></i> Xem nhà hàng
       </a>
     </div>
-
-    <!-- Thông tin thêm -->
     <div class="col-md-5">
-      <div class="mb-1"><strong>Sản phẩm:</strong> Gà Rán Giòn Cay</div>
-      <div class="mb-1"><strong>Địa chỉ:</strong> 123 Đường Số 5, Quận 10</div>
+      <div class="mb-1"><strong>Sản phẩm:</strong> {{ dish.name }}</div>
+      <div class="mb-1"><strong>Địa chỉ:</strong> {{ restaurant.street }}, {{ restaurant.district }}</div>
       <div>
         <strong>Thời gian vận chuyển:</strong> 30 - 40 phút |
         <strong>Phí vận chuyển:</strong> 15.000đ
@@ -73,76 +75,50 @@
     </div>
   </div>
 </div>
-
+{% endif %}
 <!-- PHẦN 3: Đánh giá món ăn -->
 <h4 class="mb-3 fw-bold text-dark">Đánh giá món ăn</h4>
 <div class="list-group list-group-custom mb-4">
-  <!-- Đánh giá 1 -->
+  {% for review in reviews %}
   <div class="list-group-item">
     <div class="d-flex flex-wrap align-items-center justify-content-between">
       <div>
-        <span class="fw-semibold me-3"><i class="fas fa-phone"></i> 0901 234 567</span>
-        <span class="me-3"><i class="fas fa-clock"></i> 10:30 01/06/2024</span>
-        <span class="me-3"><i class="fas fa-map-marker-alt"></i> 123 Đường Số 5, Quận 10</span>
+        <span class="fw-semibold me-3"><i class="fas fa-phone"></i> {{ review.customer }}</span>
       </div>
       <div>
         <span class="text-warning fs-5">
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="far fa-star"></i>
+          {% for i in "12345"|make_list %}
+            {% if review.star and i|add:'0' <= review.star %}
+              <i class="fas fa-star"></i>
+            {% else %}
+              <i class="far fa-star"></i>
+            {% endif %}
+          {% endfor %}
         </span>
       </div>
     </div>
     <div class="mt-2 text-dark">
-      Gà rán rất ngon, giao hàng nhanh, sẽ ủng hộ tiếp!
+      {{ review.comment }}
     </div>
   </div>
-  <!-- Đánh giá 2 -->
-  <div class="list-group-item">
-    <div class="d-flex flex-wrap align-items-center justify-content-between">
-      <div>
-        <span class="fw-semibold me-3"><i class="fas fa-phone"></i> 0902 345 678</span>
-        <span class="me-3"><i class="fas fa-clock"></i> 15:20 30/05/2024</span>
-        <span class="me-3"><i class="fas fa-map-marker-alt"></i> 45A Phan Đình Phùng, Gò Vấp</span>
-      </div>
-      <div>
-        <span class="text-warning fs-5">
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="far fa-star"></i>
-          <i class="far fa-star"></i>
-        </span>
-      </div>
-    </div>
-    <div class="mt-2 text-dark">
-      Món ăn ổn, nhưng giao hơi chậm.
-    </div>
-  </div>
-  <!-- Đánh giá 3 -->
-  <div class="list-group-item">
-    <div class="d-flex flex-wrap align-items-center justify-content-between">
-      <div>
-        <span class="fw-semibold me-3"><i class="fas fa-phone"></i> 0903 456 789</span>
-        <span class="me-3"><i class="fas fa-clock"></i> 18:45 28/05/2024</span>
-        <span class="me-3"><i class="fas fa-map-marker-alt"></i> 99 Lê Lợi, Quận 1</span>
-      </div>
-      <div>
-        <span class="text-warning fs-5">
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-          <i class="fas fa-star"></i>
-        </span>
-      </div>
-    </div>
-    <div class="mt-2 text-dark">
-      Tuyệt vời! Đồ ăn nóng hổi, chất lượng tốt.
-    </div>
-  </div>
+  {% empty %}
+  <div class="list-group-item">Chưa có đánh giá nào cho món ăn này.</div>
+  {% endfor %}
 </div>
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (btn.classList.contains('disabled')) {
+        e.preventDefault();
+        alert('Bạn cần cập nhật địa chỉ để sử dụng chức năng này!');
+        return false;
+      }
+      // TODO: Gọi API thêm vào giỏ hàng ở đây
+      alert('Đã thêm vào giỏ hàng!');
+      e.preventDefault();
+    });
+  });
+});
+</script>
 {% endblock %}
