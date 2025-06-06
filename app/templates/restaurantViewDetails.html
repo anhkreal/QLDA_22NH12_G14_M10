@@ -81,7 +81,7 @@
       </div>
       <div>
         <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0">Thêm vào giỏ</a>
-        <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0">Chi tiết</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0 dish-detail-btn" data-dish-id="{{ dish.id }}">Chi tiết</a>
       </div>
     </div>
   </div>
@@ -89,5 +89,19 @@
   <div class="list-group-item">Không có món ăn nào.</div>
   {% endfor %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.dish-detail-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var dishId = btn.getAttribute('data-dish-id');
+      if (dishId) {
+        window.location.href = "{% url 'dish-detail' %}?id=" + encodeURIComponent(dishId);
+      }
+    });
+  });
+});
+</script>
 
 {% endblock %}
