@@ -74,13 +74,16 @@
     <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
       <div class="me-3">
         <h5 class="mb-2 fw-bold">{{ dish.name }}</h5>
-        <div class="d-flex flex-wrap gap-4">
+        <div class="d-flex flex-wrap gap-4 align-items-center">
           <span class="fw-semibold">Giá: <span class="text-danger">{{ dish.price|floatformat:0 }}đ</span></span>
           <span>Đơn vị: {{ dish.unit }}</span>
+          <span>
+            <input type="number" class="form-control form-control-sm d-inline-block dish-qty-input" data-dish-id="{{ dish.id }}" value="1" min="1" style="width:70px;display:inline;">
+          </span>
         </div>
       </div>
       <div>
-        <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0">Thêm vào giỏ</a>
+        <a href="#" class="btn btn-sm btn-warning me-2 mb-1 mb-md-0 add-to-cart-btn" data-dish-id="{{ dish.id }}">Thêm vào giỏ</a>
         <a href="#" class="btn btn-sm btn-outline-secondary mb-1 mb-md-0 dish-detail-btn" data-dish-id="{{ dish.id }}">Chi tiết</a>
       </div>
     </div>
@@ -89,7 +92,6 @@
   <div class="list-group-item">Không có món ăn nào.</div>
   {% endfor %}
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.dish-detail-btn').forEach(function(btn) {
@@ -101,7 +103,43 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+
+  // Thêm vào giỏ hàng với số lượng
+  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var dishId = btn.getAttribute('data-dish-id');
+      var qtyInput = document.querySelector('.dish-qty-input[data-dish-id="' + dishId + '"]');
+      var quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+      if (quantity < 1) {
+        alert('Số lượng phải lớn hơn 0!');
+        return;
+      }
+      fetch('/api/add-to-cart/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dish_id: dishId,
+          quantity: quantity,
+          note: ""
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Đã thêm vào giỏ hàng!');
+        } else {
+          alert(data.message || 'Không thể thêm vào giỏ hàng!');
+        }
+      })
+      .catch(() => {
+        alert('Có lỗi xảy ra!');
+      });
+    });
+  });
 });
 </script>
-
 {% endblock %}

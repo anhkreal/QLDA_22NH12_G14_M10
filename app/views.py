@@ -1219,3 +1219,89 @@ def api_delete_cart_item(request):
     # Chỉ xóa dish_invoice của user hiện tại và chưa có invoice (chưa đặt hàng)
     deleted = DishInvoice.objects.filter(id_dish_cart=dish_cart_id, id_customer=user_id, id_invoice__isnull=True).delete()
     return JsonResponse({'success': True})
+
+@csrf_exempt
+@require_POST
+def api_add_to_cart(request):
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'message': 'Bạn cần đăng nhập để thêm vào giỏ hàng.'})
+        data = json.loads(request.body)
+        dish_id = data.get('dish_id')
+        quantity = int(data.get('quantity', 1))
+        note = data.get('note', '')
+
+        # Kiểm tra món ăn tồn tại
+        dish = Dish.objects.filter(id=dish_id, is_delected=False).first()
+        if not dish:
+            return JsonResponse({'success': False, 'message': 'Món ăn không tồn tại.'})
+
+        # Kiểm tra đã có dish_cart chưa (chưa đặt hàng, cùng user, cùng món)
+        # Tìm dish_cart chưa có invoice, của user này, cùng món này
+        existing_cart_ids = DishCart.objects.filter(id_dish=dish_id).values_list('id', flat=True)
+        existing_invoice = DishInvoice.objects.filter(id_dish_cart__in=existing_cart_ids, id_customer=user_id, id_invoice__isnull=True).first()
+        if existing_invoice:
+            # Nếu đã có, tăng số lượng
+            dish_cart = DishCart.objects.filter(id=existing_invoice.id_dish_cart).first()
+            if dish_cart:
+                dish_cart.quantity = (dish_cart.quantity or 0) + quantity
+                dish_cart.save()
+            return JsonResponse({'success': True})
+        # Nếu chưa có, tạo mới
+        dish_cart_id = str(uuid.uuid4())
+        DishCart.objects.create(
+            id=dish_cart_id,
+            id_dish=dish_id,
+            quantity=quantity,
+            note=note,
+            is_checked=True
+        )
+        DishInvoice.objects.create(
+            id=str(uuid.uuid4()),
+            id_dish_cart=dish_cart_id,
+            id_customer=user_id
+        )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': 'Lỗi: ' + str(e)})
+
+@csrf_exempt
+@require_POST
+def api_create_invoice(request):
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'message': 'Bạn cần đăng nhập để đặt hàng.'})
+        data = json.loads(request.body)
+        restaurant_id = data.get('restaurant_id')
+        dish_cart_ids = data.get('dish_cart_ids', [])
+        total_payment = int(data.get('total_payment', 0))
+        shipping_fee = int(data.get('shipping_fee', 0))
+
+        if not restaurant_id or not dish_cart_ids:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin đặt hàng.'})
+
+        # Tạo hóa đơn mới
+        invoice_id = str(uuid.uuid4())
+        now = timezone.now()
+        Invoice.objects.create(
+            id=invoice_id,
+            id_restaurant=restaurant_id,
+            time=now,
+            status=0,
+            total_payment=total_payment,
+            shipping_fee=shipping_fee,
+            id_deleted=False
+        )
+        # Cập nhật id_invoice cho các DishInvoice tương ứng
+        updated = 0
+        for dish_cart_id in dish_cart_ids:
+            di = DishInvoice.objects.filter(id_dish_cart=dish_cart_id, id_customer=user_id, id_invoice__isnull=True).first()
+            if di:
+                di.id_invoice = invoice_id
+                di.save(update_fields=['id_invoice'])
+                updated += 1
+        return JsonResponse({'success': True, 'updated': updated})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': 'Lỗi: ' + str(e)})

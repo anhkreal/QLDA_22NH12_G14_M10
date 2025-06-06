@@ -19,10 +19,8 @@
   <div class="col-md-7 d-flex flex-column justify-content-center">
     <div class="ps-md-4">
       <h3 class="mb-3 fw-bold text-dark">{{ dish.name }}</h3>
-
-      <div class="mb-3 text-muted fs-5">
+      <div class="mb-3 text-muted fs-5 d-flex align-items-center flex-wrap gap-3">
         <span class="text-warning fs-4">
-          {# Hiển thị số sao trung bình: làm tròn xuống cho sao đầy, nếu có phần lẻ >= 0.5 thì thêm nửa sao #}
           {% with avg=dish.avg_rating|default:0 %}
             {% for i in "12345"|make_list %}
               {% if avg|floatformat:1 >= forloop.counter %}
@@ -35,19 +33,16 @@
             {% endfor %}
           {% endwith %}
         </span>
-        <span class="mx-2">| {{ reviews|length }} đánh giá |</span>
-        <span>Đã bán: {{ dish.sold|default:0 }}</span>
+        <span>| {{ reviews|length }} đánh giá</span>
+        <span>| Đã bán: {{ dish.sold|default:0 }}</span>
       </div>
-
       <div class="mb-3">
-        <span class="fs-2 fw-bold text-danger">{{ dish.price }}đ</span>
+        <span class="fs-2 fw-bold text-danger">{{ dish.price|floatformat:0 }}đ</span>
       </div>
-
       <div class="mb-4 d-flex align-items-center">
         <label for="quantity" class="me-3 mb-0 fs-5">Số lượng:</label>
         <input type="number" id="quantity" class="form-control shadow-sm" value="1" min="1" style="width: 100px;">
       </div>
-
       {% if not user %}
         <button class="btn btn-warning btn-lg px-4 shadow" id="addToCartBtn" disabled>
           <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
@@ -74,7 +69,6 @@
 <!-- PHẦN 2: Thông tin nhà hàng -->
 <div class="card shadow-sm p-4 border-0 rounded bg-light mb-4">
   <div class="row align-items-center">
-    <!-- Ảnh minh họa nhà hàng -->
     <div class="col-md-2 text-center mb-3 mb-md-0">
       {% if restaurant and restaurant.image %}
         <img src="data:image/jpeg;base64,{{ restaurant.image|b64encode }}" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
@@ -82,16 +76,12 @@
         <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
       {% endif %}
     </div>
-
-    <!-- Tên nhà hàng và nút -->
     <div class="col-md-5">
       <div class="fw-bold fs-5 text-dark">{{ restaurant.name }}</div>
       <a href="/restaurant-view-details/?id={{ restaurant.id }}" class="btn btn-sm btn-outline-warning mt-2">
         <i class="fas fa-store"></i> Xem nhà hàng
-      </button>
+      </a>
     </div>
-
-    <!-- Thông tin thêm -->
     <div class="col-md-5">
       <div class="mb-1"><strong>Sản phẩm:</strong> {{ dish.name }}</div>
       <div class="mb-1"><strong>Địa chỉ:</strong> {{ restaurant.street }}, {{ restaurant.district }}</div>
@@ -112,12 +102,21 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between">
           <div>
             <span class="fw-semibold me-3"><i class="fas fa-phone"></i> {{ review.customer }}</span>
-            {# Nếu có thời gian đánh giá thì hiển thị ở đây #}
+            {% if review.time %}
+              <span class="me-3"><i class="fas fa-clock"></i> {{ review.time }}</span>
+            {% endif %}
+            {% if review.address %}
+              <span class="me-3"><i class="fas fa-map-marker-alt"></i> {{ review.address }}</span>
+            {% endif %}
           </div>
           <div>
             <span class="text-warning fs-5">
               {% for i in "12345"|make_list %}
-                {% if review.star|default:0 >= i %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                {% if review.star|default:0 >= i %}
+                  <i class="fas fa-star"></i>
+                {% else %}
+                  <i class="far fa-star"></i>
+                {% endif %}
               {% endfor %}
             </span>
           </div>
@@ -141,6 +140,40 @@ window.addEventListener('DOMContentLoaded', function() {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
       alert(warning.textContent.trim());
+    });
+  }
+  // Thêm vào giỏ hàng với số lượng
+  if (btn && !btn.disabled) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var quantity = parseInt(document.getElementById('quantity').value) || 1;
+      if (quantity < 1) {
+        alert('Số lượng phải lớn hơn 0!');
+        return;
+      }
+      fetch('/api/add-to-cart/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dish_id: '{{ dish.id }}',
+          quantity: quantity,
+          note: ""
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Đã thêm vào giỏ hàng!');
+        } else {
+          alert(data.message || 'Không thể thêm vào giỏ hàng!');
+        }
+      })
+      .catch(() => {
+        alert('Có lỗi xảy ra!');
+      });
     });
   }
 });

@@ -70,9 +70,31 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Bạn cần cập nhật địa chỉ để sử dụng chức năng này!');
         return false;
       }
-      // TODO: Gọi API thêm vào giỏ hàng ở đây
-      alert('Đã thêm vào giỏ hàng!');
       e.preventDefault();
+      var dishId = btn.getAttribute('data-dish-id');
+      fetch('/api/add-to-cart/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dish_id: dishId,
+          quantity: 1,
+          note: ""
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Đã thêm vào giỏ hàng!');
+        } else {
+          alert(data.message || 'Không thể thêm vào giỏ hàng!');
+        }
+      })
+      .catch(() => {
+        alert('Có lỗi xảy ra!');
+      });
     });
   });
 });

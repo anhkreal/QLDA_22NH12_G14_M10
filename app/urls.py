@@ -34,5 +34,7 @@ urlpatterns = [
     path('api/update-invoice-status/', views.api_update_invoice_status, name='api-update-invoice-status'),
     path('restaurants/', views.restaurant_list, name='restaurant-list'),
     path('api/delete-cart-item/', views.api_delete_cart_item, name='api-delete-cart-item'),
+    path('api/add-to-cart/', views.api_add_to_cart, name='api-add-to-cart'),
+    path('api/create-invoice/', views.api_create_invoice, name='api-create-invoice'),
 ]
 

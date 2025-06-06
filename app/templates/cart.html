@@ -90,14 +90,54 @@ function formatVND(num) {
 
 function updateCartTotal() {
   let total = 0;
-  document.querySelectorAll('.cart-item-row').forEach(function(row) {
-    const checked = row.querySelector('.dish-checkbox').checked;
-    if (checked) {
-      const price = parseInt(row.querySelector('.ms-auto').textContent.replace(/\D/g, '')) || 0;
-      const qty = parseInt(row.querySelector('.quantity-input').value) || 1;
-      total += price * qty;
+  let selectedRestaurant = null;
+  let selectedRestaurantDistrict = null;
+  let selected = false;
+  // Tìm nhà hàng có món được chọn
+  document.querySelectorAll('.cart-restaurant').forEach(function(card) {
+    const restCheckbox = card.querySelector('.restaurant-checkbox');
+    const dishCheckboxes = card.querySelectorAll('.dish-checkbox');
+    let anyChecked = false;
+    dishCheckboxes.forEach(function(cb) {
+      if (cb.checked) anyChecked = true;
+    });
+    if (anyChecked) {
+      selectedRestaurant = card;
+      selected = true;
     }
   });
+
+  // Nếu có chọn, tính tổng tiền các món được chọn trong nhà hàng đó
+  if (selectedRestaurant) {
+    selectedRestaurant.querySelectorAll('.cart-item-row').forEach(function(row) {
+      const checked = row.querySelector('.dish-checkbox').checked;
+      if (checked) {
+        const price = parseInt(row.querySelector('.ms-auto').textContent.replace(/\D/g, '')) || 0;
+        const qty = parseInt(row.querySelector('.quantity-input').value) || 1;
+        total += price * qty;
+      }
+    });
+    // Lấy quận của user và quận của nhà hàng
+    const userDistrict = "{{ user.district|default:'' }}".trim();
+    selectedRestaurantDistrict = selectedRestaurant.getAttribute('data-restaurant-id');
+    // Lấy object restaurant từ restaurants context để lấy district
+    let restDistrict = "";
+    {% for group in restaurants %}
+      if ("{{ group.restaurant.id }}" === (selectedRestaurant ? selectedRestaurant.getAttribute('data-restaurant-id') : "")) {
+        restDistrict = "{{ group.restaurant.district|default:'' }}".trim();
+      }
+    {% endfor %}
+    // Nếu có chọn món, cộng phí vận chuyển
+    if (total > 0) {
+      if (userDistrict && restDistrict && userDistrict === restDistrict) {
+        total += 15000;
+      } else {
+        total += 25000;
+      }
+    }
+  } else {
+    total = 0;
+  }
   document.getElementById('cart-total').textContent = formatVND(total);
 }
 
@@ -107,13 +147,34 @@ document.querySelectorAll('.cart-restaurant').forEach(function(card) {
   const dishCheckboxes = card.querySelectorAll('.dish-checkbox');
   // Khi click checkbox nhà hàng
   restCheckbox.addEventListener('change', function() {
-    dishCheckboxes.forEach(cb => { cb.checked = restCheckbox.checked; });
+    if (restCheckbox.checked) {
+      // Bỏ chọn tất cả checkbox ở các nhà hàng khác
+      document.querySelectorAll('.cart-restaurant').forEach(function(otherCard) {
+        if (otherCard !== card) {
+          otherCard.querySelectorAll('.dish-checkbox').forEach(cb => { cb.checked = false; });
+          otherCard.querySelector('.restaurant-checkbox').checked = false;
+        }
+      });
+      dishCheckboxes.forEach(cb => { cb.checked = true; });
+    } else {
+      dishCheckboxes.forEach(cb => { cb.checked = false; });
+    }
     updateCartTotal();
     // TODO: Gửi AJAX cập nhật trạng thái checked cho toàn bộ món ăn trong nhà hàng này
   });
   // Khi click checkbox từng món
   dishCheckboxes.forEach(cb => {
     cb.addEventListener('change', function() {
+      if (cb.checked) {
+        // Bỏ chọn tất cả checkbox ở các nhà hàng khác
+        document.querySelectorAll('.cart-restaurant').forEach(function(otherCard) {
+          if (otherCard !== card) {
+            otherCard.querySelectorAll('.dish-checkbox').forEach(cb2 => { cb2.checked = false; });
+            otherCard.querySelector('.restaurant-checkbox').checked = false;
+          }
+        });
+      }
+      // Nếu tất cả món đều được chọn thì chọn luôn checkbox nhà hàng
       if ([...dishCheckboxes].every(x => x.checked)) {
         restCheckbox.checked = true;
       } else {
@@ -163,6 +224,85 @@ document.querySelectorAll('.btn-delete-cart-item').forEach(function(btn) {
 
 // Cập nhật tổng tiền ban đầu
 updateCartTotal();
+
+// Đặt hàng
+document.getElementById('btn-order').addEventListener('click', function() {
+  // Lấy nhà hàng được chọn
+  let selectedRestaurantId = null;
+  document.querySelectorAll('.cart-restaurant').forEach(function(card) {
+    const dishCheckboxes = card.querySelectorAll('.dish-checkbox');
+    let anyChecked = false;
+    dishCheckboxes.forEach(function(cb) {
+      if (cb.checked) anyChecked = true;
+    });
+    if (anyChecked) {
+      selectedRestaurantId = card.getAttribute('data-restaurant-id');
+    }
+  });
+  if (!selectedRestaurantId) {
+    alert('Vui lòng chọn món ăn để đặt hàng!');
+    return;
+  }
+  // Lấy các dish_cart_id được chọn
+  let dishCartIds = [];
+  document.querySelectorAll('.cart-restaurant[data-restaurant-id="' + selectedRestaurantId + '"] .cart-item-row').forEach(function(row) {
+    if (row.querySelector('.dish-checkbox').checked) {
+      dishCartIds.push(row.getAttribute('data-dish-cart-id'));
+    }
+  });
+  if (dishCartIds.length === 0) {
+    alert('Vui lòng chọn món ăn để đặt hàng!');
+    return;
+  }
+  // Lấy tổng tiền và phí vận chuyển từ giao diện
+  let totalText = document.getElementById('cart-total').textContent.replace(/\D/g, '');
+  let total = parseInt(totalText) || 0;
+  // Lấy phí vận chuyển
+  let shippingFee = 0;
+  // Lấy quận user và quận nhà hàng
+  const userDistrict = "{{ user.district|default:'' }}".trim();
+  let restDistrict = "";
+  {% for group in restaurants %}
+    if ("{{ group.restaurant.id }}" === selectedRestaurantId) {
+      restDistrict = "{{ group.restaurant.district|default:'' }}".trim();
+    }
+  {% endfor %}
+  if (userDistrict && restDistrict && userDistrict === restDistrict) {
+    shippingFee = 15000;
+  } else {
+    shippingFee = 25000;
+  }
+  // Tổng tiền món ăn (không gồm phí ship)
+  let dishesTotal = total - shippingFee;
+  if (dishesTotal < 0) dishesTotal = 0;
+
+  // Gửi AJAX tạo hóa đơn
+  fetch('/api/create-invoice/', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      restaurant_id: selectedRestaurantId,
+      dish_cart_ids: dishCartIds,
+      total_payment: dishesTotal,
+      shipping_fee: shippingFee
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Đặt hàng thành công!');
+      window.location.reload();
+    } else {
+      alert(data.message || 'Đặt hàng thất bại!');
+    }
+  })
+  .catch(() => {
+    alert('Có lỗi xảy ra khi đặt hàng!');
+  });
+});
 
 </script>
 
