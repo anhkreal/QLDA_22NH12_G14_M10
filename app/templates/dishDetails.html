@@ -8,7 +8,11 @@
 <div class="row mb-5 shadow-sm bg-white p-4 rounded">
   <!-- Ảnh minh họa -->
   <div class="col-md-5 text-center">
-    <img src="{% if dish.image %}data:image/jpeg;base64,{{ dish.image|b64encode }}{% else %}https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg{% endif %}" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% if dish.image %}
+      <img src="data:image/jpeg;base64,{{ dish.image|b64encode }}" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% else %}
+      <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="img-fluid rounded" alt="Ảnh món ăn">
+    {% endif %}
   </div>
 
   <!-- Thông tin chi tiết -->
@@ -16,47 +20,27 @@
     <div class="ps-md-4">
       <h3 class="mb-3 fw-bold text-dark">{{ dish.name }}</h3>
 
-      <!-- Đánh giá trung bình và số lượng đánh giá -->
-      {% with total_reviews=reviews|length %}
-        {% if total_reviews > 0 %}
-          {% with total_star=0 %}
-            {% for r in reviews %}
-              {% with total_star=total_star|add:r.star %}
-              {% endwith %}
-            {% endfor %}
-            {% with avg_rating=total_star|divisibleby:total_reviews %}
-              <div class="mb-3 text-muted fs-5">
-                <span class="text-warning fs-4">
-                  {% with avg=total_star|floatformat:2 %}
-                    {% with avg_rating=total_star|floatformat:1 %}
-                      {% for i in "12345"|make_list %}
-                        {% if i|add:'0' <= total_star|divisibleby:total_reviews %}
-                          <i class="fas fa-star"></i>
-                        {% else %}
-                          <i class="far fa-star"></i>
-                        {% endif %}
-                      {% endfor %}
-                    {% endwith %}
-                  {% endwith %}
-                </span>
-                <span class="mx-2">| {{ total_reviews }} đánh giá |</span>
-              </div>
-            {% endwith %}
-          {% endwith %}
-        {% else %}
-          <div class="mb-3 text-muted fs-5">
-            <span class="text-warning fs-4">
-              {% for i in "12345"|make_list %}
+      <div class="mb-3 text-muted fs-5">
+        <span class="text-warning fs-4">
+          {# Hiển thị số sao trung bình: làm tròn xuống cho sao đầy, nếu có phần lẻ >= 0.5 thì thêm nửa sao #}
+          {% with avg=dish.avg_rating|default:0 %}
+            {% for i in "12345"|make_list %}
+              {% if avg|floatformat:1 >= forloop.counter %}
+                <i class="fas fa-star"></i>
+              {% elif avg|floatformat:1 >= forloop.counter0|add:0.5 and avg|floatformat:1 < forloop.counter %}
+                <i class="fas fa-star-half-alt"></i>
+              {% else %}
                 <i class="far fa-star"></i>
-              {% endfor %}
-            </span>
-            <span class="mx-2">| Chưa có đánh giá |</span>
-          </div>
-        {% endif %}
-      {% endwith %}
+              {% endif %}
+            {% endfor %}
+          {% endwith %}
+        </span>
+        <span class="mx-2">| {{ reviews|length }} đánh giá |</span>
+        <span>Đã bán: {{ dish.sold|default:0 }}</span>
+      </div>
 
       <div class="mb-3">
-        <span class="fs-2 fw-bold text-danger">{{ dish.price|floatformat:0 }}đ</span>
+        <span class="fs-2 fw-bold text-danger">{{ dish.price }}đ</span>
       </div>
 
       <div class="mb-4 d-flex align-items-center">
@@ -64,9 +48,25 @@
         <input type="number" id="quantity" class="form-control shadow-sm" value="1" min="1" style="width: 100px;">
       </div>
 
-      <button class="btn btn-warning btn-lg px-4 shadow">
-        <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
-      </button>
+      {% if not user %}
+        <button class="btn btn-warning btn-lg px-4 shadow" id="addToCartBtn" disabled>
+          <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
+        </button>
+        <div class="alert alert-warning mt-3" id="addressWarning">
+          Bạn cần đăng nhập và cập nhật địa chỉ để thêm món vào giỏ hàng!
+        </div>
+      {% elif not user.district or user.district|length == 0 or user.district|lower == 'none' or user.district|lower == 'null' %}
+        <button class="btn btn-warning btn-lg px-4 shadow" id="addToCartBtn" disabled>
+          <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
+        </button>
+        <div class="alert alert-warning mt-3" id="addressWarning">
+          Bạn cần cập nhật địa chỉ để thêm món vào giỏ hàng!
+        </div>
+      {% else %}
+        <button class="btn btn-warning btn-lg px-4 shadow" id="addToCartBtn">
+          <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ hàng
+        </button>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -76,16 +76,17 @@
   <div class="row align-items-center">
     <!-- Ảnh minh họa nhà hàng -->
     <div class="col-md-2 text-center mb-3 mb-md-0">
-      <img src="{% if restaurant and restaurant.image %}data:image/jpeg;base64,{{ restaurant.image|b64encode }}{% else %}https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg{% endif %}"
-           class="rounded-circle border"
-           alt="Ảnh nhà hàng"
-           style="width: 80px; height: 80px; object-fit: cover;">
+      {% if restaurant and restaurant.image %}
+        <img src="data:image/jpeg;base64,{{ restaurant.image|b64encode }}" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
+      {% else %}
+        <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="rounded-circle border" alt="Ảnh nhà hàng" style="width: 80px; height: 80px; object-fit: cover;">
+      {% endif %}
     </div>
 
     <!-- Tên nhà hàng và nút -->
     <div class="col-md-5">
       <div class="fw-bold fs-5 text-dark">{{ restaurant.name }}</div>
-      <button type="button" id="view-restaurant-btn" data-restaurant-id="{{ restaurant.id }}" class="btn btn-sm btn-outline-warning mt-2">
+      <a href="/restaurant-view-details/?id={{ restaurant.id }}" class="btn btn-sm btn-outline-warning mt-2">
         <i class="fas fa-store"></i> Xem nhà hàng
       </button>
     </div>
@@ -106,45 +107,40 @@
 <h4 class="mb-3 fw-bold text-dark">Đánh giá món ăn</h4>
 <div class="list-group list-group-custom mb-4">
   {% if reviews %}
-    {% for r in reviews %}
+    {% for review in reviews %}
       <div class="list-group-item">
         <div class="d-flex flex-wrap align-items-center justify-content-between">
           <div>
-            <span class="fw-semibold me-3"><i class="fas fa-phone"></i> {{ r.customer }}</span>
-            <span class="me-3"><i class="fas fa-clock"></i> {{ r.time|default:"" }}</span>
-            <span class="me-3"><i class="fas fa-map-marker-alt"></i> {{ r.address|default:"" }}</span>
+            <span class="fw-semibold me-3"><i class="fas fa-phone"></i> {{ review.customer }}</span>
+            {# Nếu có thời gian đánh giá thì hiển thị ở đây #}
           </div>
           <div>
             <span class="text-warning fs-5">
               {% for i in "12345"|make_list %}
-                {% if i|add:'0' <= r.star|stringformat:"d" %}
-                  <i class="fas fa-star"></i>
-                {% else %}
-                  <i class="far fa-star"></i>
-                {% endif %}
+                {% if review.star|default:0 >= i %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
               {% endfor %}
             </span>
           </div>
         </div>
         <div class="mt-2 text-dark">
-          {{ r.comment|default:"" }}
+          {{ review.comment }}
         </div>
       </div>
     {% endfor %}
   {% else %}
-    <div class="list-group-item">Chưa có đánh giá nào cho món ăn này.</div>
+    <div class="list-group-item text-muted">Chưa có đánh giá nào cho món ăn này.</div>
   {% endif %}
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var btn = document.getElementById('view-restaurant-btn');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      var restId = btn.getAttribute('data-restaurant-id');
-      if (restId) {
-        window.location.href = "{% url 'restaurant-view-details' %}?id=" + encodeURIComponent(restId);
-      }
+// Nếu user chưa có địa chỉ, chặn click nút thêm vào giỏ hàng
+window.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('addToCartBtn');
+  var warning = document.getElementById('addressWarning');
+  if (btn && btn.disabled && warning) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      alert(warning.textContent.trim());
     });
   }
 });

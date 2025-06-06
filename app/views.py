@@ -50,6 +50,7 @@ def dish_detail(request):
     dish = Dish.objects.filter(id=dish_id, is_delected=False).first()
     restaurant = None
     if dish:
+        # Fetch the restaurant using the ForeignKey from the dish
         restaurant = Restaurant.objects.filter(id=dish.id_restaurant, is_deleted=False).first()
     # Lấy 10 đánh giá mới nhất cho món ăn này
     reviews = []
@@ -702,7 +703,7 @@ def revenue_statistics(request):
     dish_invoices = DishInvoice.objects.filter(id_invoice__in=invoice_ids)
 
     for dish_invoice in dish_invoices:
-        dish_cart = DishCart.objects.filter(id=dish_invoice.id_dish_cart).first()
+        dish_cart = DishCart.objects.filter(id_dish_cart=dish_invoice.id_dish_cart).first()
         if dish_cart:
             dish = Dish.objects.filter(id=dish_cart.id_dish).first()
             if dish:
