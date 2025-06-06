@@ -145,12 +145,19 @@
       <i class="fas fa-store"></i> M10 Eats
     </div>
     <div class="search-bar flex-grow-1 mx-3">
+<<<<<<< HEAD
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Tìm kiếm sản phẩm...">
+        <button class="btn btn-warning"><i class="fas fa-search"></i></button>
+      </div>
+=======
       <form method="get" action="{% url 'restaurant-owner-home' %}" class="w-100">
         <div class="input-group">
           <input type="text" name="q" class="form-control" placeholder="Tìm kiếm món ăn..." value="{{ query|default:'' }}">
           <button class="btn btn-warning" type="submit"><i class="fas fa-search"></i></button>
         </div>
       </form>
+>>>>>>> main
     </div>
     <!-- Bỏ giỏ hàng -->
   </div>
