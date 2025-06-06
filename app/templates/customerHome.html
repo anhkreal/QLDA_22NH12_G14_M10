@@ -32,54 +32,50 @@
 <!-- Danh sách món ăn -->
 <h4 class="mb-3">Món ăn phổ biến</h4>
 <div class="list-group list-group-custom">
+  {% for dish in dishes %}
   <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
-    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    {% if dish.image %}
+    <img src="data:image/jpeg;base64,{{ dish.image|b64encode }}" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    {% else %}
+    <img src="https://via.placeholder.com/100x100?text=No+Image" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
+    {% endif %}
     <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
       <div class="me-3">
-        <h5 class="mb-1">Gà Rán Giòn Cay</h5>
+        <h5 class="mb-1">{{ dish.name }}</h5>
         <div class="d-flex flex-wrap gap-3">
-          <span>Giá: 45.000đ</span>
-          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
+          <span>Giá: {{ dish.price|floatformat:0 }}đ</span>
+          <span>Đơn vị: {{ dish.unit }}</span>
         </div>
       </div>
       <div>
-        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
-        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
+        {% if user and user.district %}
+        <a href="#" class="btn btn-sm btn-warning me-2 add-to-cart-btn" data-dish-id="{{ dish.id }}">Thêm vào giỏ</a>
+        {% else %}
+        <a href="#" class="btn btn-sm btn-warning me-2 disabled add-to-cart-btn" data-dish-id="{{ dish.id }}" onclick="alert('Bạn cần cập nhật địa chỉ để sử dụng chức năng này!'); return false;">Thêm vào giỏ</a>
+        {% endif %}
+        <a href="{% url 'dish-detail' %}?id={{ dish.id }}" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
       </div>
     </div>
   </div>
-  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
-    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
-    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
-      <div class="me-3">
-        <h5 class="mb-1">Bún Bò Huế Đặc Biệt</h5>
-        <div class="d-flex flex-wrap gap-3">
-          <span>Giá: 50.000đ</span>
-          <span>Đánh giá: <span class="text-warning">★★★★★</span></span>
-        </div>
-      </div>
-      <div>
-        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
-        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
-      </div>
-    </div>
-  </div>
-  <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
-    <img src="https://edeninterior.vn/wp-content/uploads/2024/05/thiet-ke-mat-tien-nha-hang-dep-1.jpg" class="me-3" style="width: 100px; height: 100px; object-fit: cover;">
-    <div class="d-flex align-items-center flex-grow-1 justify-content-between flex-wrap">
-      <div class="me-3">
-        <h5 class="mb-1">Trà Sữa Trân Châu Đường Đen</h5>
-        <div class="d-flex flex-wrap gap-3">
-          <span>Giá: 32.000đ</span>
-          <span>Đánh giá: <span class="text-warning">★★★★☆</span></span>
-        </div>
-      </div>
-      <div>
-        <a href="#" class="btn btn-sm btn-warning me-2">Thêm vào giỏ</a>
-        <a href="#" class="btn btn-sm btn-outline-secondary">Chi tiết</a>
-      </div>
-    </div>
-  </div>
+  {% empty %}
+  <div class="list-group-item">Không có món ăn nào.</div>
+  {% endfor %}
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (btn.classList.contains('disabled')) {
+        e.preventDefault();
+        alert('Bạn cần cập nhật địa chỉ để sử dụng chức năng này!');
+        return false;
+      }
+      // TODO: Gọi API thêm vào giỏ hàng ở đây
+      alert('Đã thêm vào giỏ hàng!');
+      e.preventDefault();
+    });
+  });
+});
+</script>
 
 {% endblock %}

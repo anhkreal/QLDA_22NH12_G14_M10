@@ -15,18 +15,64 @@ from datetime import datetime, timedelta
 
 def customer_home(request):
     query = request.GET.get('q', '')
+    user_id = request.session.get('user_id')
+    user = User.objects.filter(id=user_id).first() if user_id else None
+    # Lấy danh sách nhà hàng như cũ
     if query:
         restaurants = Restaurant.objects.filter(name__icontains=query, is_deleted=False)
     else:
         restaurants = Restaurant.objects.filter(is_deleted=False)
+    # Lấy danh sách món ăn phổ biến (ưu tiên cùng quận)
+    dishes = []
+    if user and user.district:
+        # Ưu tiên món ăn từ nhà hàng cùng quận
+        same_district_restaurants = Restaurant.objects.filter(district=user.district, is_deleted=False)
+        same_district_dishes = Dish.objects.filter(id_restaurant__in=[r.id for r in same_district_restaurants], is_delected=False)
+        other_dishes = Dish.objects.exclude(id__in=[d.id for d in same_district_dishes]).filter(is_delected=False)
+        dishes = list(same_district_dishes[:10])
+        if len(dishes) < 10:
+            dishes += list(other_dishes[:10-len(dishes)])
+    else:
+        # Nếu chưa có địa chỉ, lấy 10 món bất kỳ
+        dishes = list(Dish.objects.filter(is_delected=False)[:10])
     return render(request, 'customerHome.html', {
         'restaurants': restaurants,
-        'query': query
+        'query': query,
+        'dishes': dishes,
+        'user': user
     })
 
 
 def dish_detail(request):
-    return render(request, 'dishDetails.html')
+    dish_id = request.GET.get('id')
+    user_id = request.session.get('user_id')
+    user = User.objects.filter(id=user_id).first() if user_id else None
+    dish = Dish.objects.filter(id=dish_id, is_delected=False).first()
+    restaurant = None
+    if dish:
+        restaurant = Restaurant.objects.filter(id=dish.id_restaurant, is_deleted=False).first()
+    # Lấy 10 đánh giá mới nhất cho món ăn này
+    reviews = []
+    if dish:
+        dish_carts = DishCart.objects.filter(id_dish=dish.id)
+        dish_cart_ids = [dc.id for dc in dish_carts]
+        dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
+        rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
+        rates = Rate.objects.filter(id__in=rate_ids).order_by('-id')[:10]
+        for rate in rates:
+            di = next((di for di in dish_invoices if di.id_rate == rate.id), None)
+            customer = User.objects.filter(id=di.id_customer).first() if di else None
+            reviews.append({
+                'star': rate.star,
+                'comment': rate.comment,
+                'customer': customer.phone_number if customer else 'Ẩn danh',
+            })
+    return render(request, 'dishDetails.html', {
+        'dish': dish,
+        'restaurant': restaurant,
+        'reviews': reviews,
+        'user': user
+    })
 
 def restaurant_view_details(request):
     restaurant_id = request.GET.get('id')
