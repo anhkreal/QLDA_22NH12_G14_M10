@@ -7,7 +7,6 @@
   <div class="col-md-7 col-lg-6">
     <div class="card shadow-sm p-4">
       <h3 class="mb-4 text-center text-warning"><i class="fas fa-user me-2"></i>Thông tin cá nhân</h3>
-<<<<<<< HEAD
       <form id="customerInfoForm">
         {% csrf_token %}
         <div class="mb-3">
@@ -21,20 +20,6 @@
         <div class="mb-3">
           <label for="phone" class="form-label">Số điện thoại</label>
           <input type="tel" class="form-control" id="phone" name="phone" placeholder="Nhập số điện thoại" value="{{ user.phone_number|default:'' }}" required>
-=======
-      <form>
-        <div class="mb-3">
-          <label for="name" class="form-label">Họ và tên</label>
-          <input type="text" class="form-control" id="name" placeholder="Nhập họ và tên" value="Nguyễn Văn A">
-        </div>
-        <div class="mb-3">
-          <label for="email" class="form-label">Email</label>
-          <input type="email" class="form-control" id="email" value="email@example.com" readonly>
-        </div>
-        <div class="mb-3">
-          <label for="phone" class="form-label">Số điện thoại</label>
-          <input type="tel" class="form-control" id="phone" placeholder="Nhập số điện thoại" value="0901234567">
->>>>>>> main
         </div>
         <div class="mb-3">
           <label for="role" class="form-label">Vai trò</label>
@@ -42,7 +27,6 @@
         </div>
         <div class="mb-3">
           <label for="street" class="form-label">Tên đường</label>
-<<<<<<< HEAD
           <input type="text" class="form-control" id="street" name="street" placeholder="Nhập tên đường" value="{{ user.street|default:'' }}" required>
         </div>
         <div class="mb-4">
@@ -57,21 +41,6 @@
             <option value="Cẩm Lệ" {% if user.district == 'Cẩm Lệ' %}selected{% endif %}>Cẩm Lệ</option>
             <option value="Hòa Vang" {% if user.district == 'Hòa Vang' %}selected{% endif %}>Hòa Vang</option>
             <option value="Hoàng Sa" {% if user.district == 'Hoàng Sa' %}selected{% endif %}>Hoàng Sa</option>
-=======
-          <input type="text" class="form-control" id="street" placeholder="Nhập tên đường" value="123 Đường Số 5">
-        </div>
-        <div class="mb-4">
-          <label for="district" class="form-label">Quận</label>
-          <select class="form-select" id="district">
-            <option>Hải Châu</option>
-            <option>Thanh Khê</option>
-            <option>Sơn Trà</option>
-            <option>Ngũ Hành Sơn</option>
-            <option selected>Liên Chiểu</option>
-            <option>Cẩm Lệ</option>
-            <option>Hòa Vang</option>
-            <option>Hoàng Sa</option>
->>>>>>> main
           </select>
         </div>
         <button type="submit" class="btn btn-warning w-100 fw-bold">Cập nhật thông tin</button>
@@ -80,7 +49,6 @@
   </div>
 </div>
 
-<<<<<<< HEAD
 <script>
 document.getElementById('customerInfoForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -110,6 +78,4 @@ document.getElementById('customerInfoForm').addEventListener('submit', function(
 });
 </script>
 
-=======
->>>>>>> main
 {% endblock %}
