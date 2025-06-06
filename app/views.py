@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate
+from .models import User, Restaurant, UserRestaurant, Dish, DishCart, DishInvoice, Rate, Invoice
 import json
 import uuid
 from django.views.decorators.csrf import csrf_exempt
 import base64
 from django.utils import timezone
+from django.db import connection, transaction
+from django.contrib import messages
 from django.views.decorators.http import require_POST
 import unicodedata
 
@@ -99,7 +101,44 @@ def shipping_order(request):
     return render(request, 'shippingOrder.html')
 
 def order_history(request):
-    return render(request, 'orderHistory.html')
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    # Lấy các hóa đơn đã hoàn tất (status=3) hoặc bị từ chối (status=2) của user
+    invoices = Invoice.objects.filter(id_customer=user_id, status__in=[2, 3]).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            # Kiểm tra trạng thái đánh giá
+            rated = False
+            rate = None
+            if di.id_rate:
+                rated = True
+                rate = Rate.objects.filter(id=di.id_rate).first()
+            dishes.append({
+                'dish_invoice_id': di.id,
+                'name': dish.name if dish else '',
+                'quantity': dish_cart.quantity if dish_cart else 0,
+                'unit': dish.unit if dish else '',
+                'rated': rated,
+                'star': rate.star if rate else 0,
+                'comment': rate.comment if rate else '',
+            })
+        orders.append({
+            'restaurant_name': restaurant.name if restaurant else '',
+            'restaurant_phone': restaurant.id if restaurant else '',
+            'restaurant_address': f"{restaurant.street}, {restaurant.district}" if restaurant else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'status': invoice.status,
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'orderHistory.html', {'orders': orders})
 
 def spending_statistics(request):
     return render(request, 'spendingStatistics.html')
@@ -270,8 +309,87 @@ def restaurant_pending_order(request):
 def restaurant_shipping_order(request):
     return render(request, 'restaurantShippingOrder.html')
 
+def shipping_orders_view(request):
+    from .models import Invoice, DishInvoice, DishCart, Dish, Restaurant, User
+    orders = []
+    # Lấy đơn hàng chờ nhận hàng (status=1) trước
+    invoices = list(Invoice.objects.filter(status__in=[0,1]).order_by('-status', 'time').select_related())
+    for invoice in invoices:
+        # Lấy nhà hàng
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        # Lấy các dish_invoice
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        hide_order = False
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                # Nếu là đơn chờ nhận hàng, kiểm tra món bị xóa
+                if invoice.status == 1 and dish.is_delected:
+                    hide_order = True
+                    break
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        # Nếu là đơn chờ nhận hàng và có món bị xóa, cập nhật status=2 và bỏ qua
+        if invoice.status == 1 and hide_order:
+            invoice.status = 2
+            invoice.save(update_fields=['status'])
+            continue
+        orders.append({
+            'invoice_id': invoice.id,
+            'restaurant_name': restaurant.name if restaurant else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+            'status': invoice.status,
+        })
+    return render(request, 'shippingOrder.html', {'orders': orders})
+
 def restaurant_order_history(request):
-    return render(request, 'restaurantOrderHistory.html')
+    user_id = request.session.get('user_id')
+    # Lấy id nhà hàng của chủ nhà hàng
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return render(request, 'restaurantOrderHistory.html', {'orders': []})
+    restaurant_id = user_restaurant.id_restaurant
+    # Lấy các hóa đơn đã hoàn tất của nhà hàng này
+    invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=2).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'customer_name': customer.name if customer else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+        })
+    return render(request, 'restaurantOrderHistory.html', {'orders': orders})
 
 def revenue_statistics(request):
     return render(request, 'revenueStatistics.html')
@@ -457,6 +575,100 @@ def api_dish_reviews(request):
                         "address": customer.street + ", " + customer.district if customer and customer.street and customer.district else "",
                     })
     return JsonResponse({"success": True, "reviews": reviews})
+
+def api_update_invoice_status(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        invoice_id = data.get('invoice_id')
+        status = data.get('status')
+        with transaction.atomic():
+            invoice = Invoice.objects.filter(id=invoice_id).first()
+            if invoice and status in [1, 2]:
+                invoice.status = status
+                invoice.save(update_fields=['status'])
+                return JsonResponse({'success': True})
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
+    return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
+
+def pending_orders_view(request):
+    orders = []
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT i.id, i.time, i.total_payment, i.id_customer
+            FROM invoice i
+            WHERE i.status = 0
+            ORDER BY i.time ASC
+        ''')
+        invoices = cursor.fetchall()
+        for inv in invoices:
+            invoice_id, order_time, total_payment, customer_id = inv
+            # Lấy thông tin khách hàng
+            customer = None
+            if customer_id:
+                cursor.execute('SELECT first_name, last_name, email FROM auth_user WHERE id = %s', [customer_id])
+                customer = cursor.fetchone()
+            # Lấy danh sách món ăn
+            cursor.execute('''
+                SELECT d.name, dc.quantity, d.price, d.unit
+                FROM dish_invoice di
+                JOIN dish_cart dc ON di.id_dish_cart = dc.id
+                JOIN dish d ON dc.id_dish = d.id
+                WHERE di.id_invoice = %s
+            ''', [invoice_id])
+            items = [
+                {
+                    'name': row[0],
+                    'quantity': row[1],
+                    'price': row[2],
+                    'unit': row[3],
+                } for row in cursor.fetchall()
+            ]
+            orders.append({
+                'invoice_id': invoice_id,
+                'customer_name': (customer[0] + ' ' + customer[1]) if customer else '',
+                'customer_phone': customer[2] if customer else '',
+                'customer_address': '',  # Nếu có trường địa chỉ thì lấy thêm
+                'order_time': order_time.strftime('%H:%M %d/%m/%Y') if order_time else '',
+                'dishes': items,
+                'total_payment': total_payment,
+            })
+    return render(request, 'restaurantPendingOrder.html', {'orders': orders})
+
+def confirm_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = 1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã xác nhận đơn hàng!')
+    return redirect('pending-orders')
+
+def reject_pending_order(request, invoice_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE invoice SET status = -1 WHERE id = %s', [invoice_id])
+        messages.success(request, 'Đã từ chối đơn hàng!')
+    return redirect('pending-orders')
+
+@csrf_exempt
+def api_submit_rating(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        dish_invoice_id = data.get('dish_invoice_id')
+        star = int(data.get('star', 0))
+        comment = data.get('comment', '').strip()
+        user_id = request.session.get('user_id')
+        if not (dish_invoice_id and 1 <= star <= 5 and user_id):
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin hoặc số sao không hợp lệ!'})
+        dish_invoice = DishInvoice.objects.filter(id=dish_invoice_id, id_customer=user_id).first()
+        if not dish_invoice:
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy món ăn trong đơn hàng!'})
+        if dish_invoice.id_rate:
+            return JsonResponse({'success': False, 'message': 'Bạn đã đánh giá món này!'})
+        rate_id = str(uuid.uuid4())
+        rate = Rate.objects.create(id=rate_id, star=star, comment=comment)
+        dish_invoice.id_rate = rate_id
+        dish_invoice.save(update_fields=['id_rate'])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'})
 
 def restaurant_list(request):
     query = request.GET.get('q', '')
