@@ -1118,7 +1118,7 @@ def reject_pending_order(request, invoice_id):
             cursor.execute('UPDATE invoice SET status = -1 WHERE id = %s', [invoice_id])
         messages.success(request, 'Đã từ chối đơn hàng!')
     return redirect('pending-orders')
-
+#ok
 @csrf_exempt
 def api_submit_rating(request):
     if request.method == 'POST':
