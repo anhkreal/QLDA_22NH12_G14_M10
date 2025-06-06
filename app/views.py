@@ -512,7 +512,41 @@ def restaurant_pending_order(request):
     return render(request, 'restaurantPendingOrder.html')
 
 def restaurant_shipping_order(request):
-    return render(request, 'restaurantShippingOrder.html')
+    user_id = request.session.get('user_id')
+    # Lấy id nhà hàng của chủ nhà hàng
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return render(request, 'restaurantShippingOrder.html', {'orders': []})
+    restaurant_id = user_restaurant.id_restaurant
+    # Lấy các hóa đơn đang giao (status=1) của nhà hàng này
+    invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=1).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        items = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                items.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'customer_name': customer.name if customer else '',
+            'phone': customer.phone_number if customer else '',
+            'address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'items': items,
+            'total_payment': invoice.total_payment,
+            'status': invoice.status,
+        })
+    return render(request, 'restaurantShippingOrder.html', {'orders': orders})
 
 def revenue_statistics(request):
     user_id = request.session.get('user_id')
