@@ -9,7 +9,7 @@ from django.utils import timezone
 import MySQLdb
 from django.conf import settings
 from django.contrib import messages
-from django.db import connection
+from django.db import connection, transaction
 
 def customer_home(request):
     return render(request, 'customerHome.html')
@@ -174,64 +174,50 @@ def restaurant_shipping_order(request):
     return render(request, 'restaurantShippingOrder.html')
 
 def shipping_orders_view(request):
-    # Kết nối DB thủ công, không dùng ORM
-    db = MySQLdb.connect(
-        host=settings.DATABASES['default']['HOST'],
-        user=settings.DATABASES['default']['USER'],
-        passwd=settings.DATABASES['default']['PASSWORD'],
-        db=settings.DATABASES['default']['NAME'],
-        charset='utf8mb4'
-    )
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    # Lấy các đơn hàng status=1
-    cursor.execute("""
-        SELECT i.id, i.time, i.total_payment, i.id_restaurant, i.id_customer
-        FROM invoice i
-        WHERE i.status = 1
-        ORDER BY i.time ASC
-    """)
-    invoices = cursor.fetchall()
+    from .models import Invoice, DishInvoice, DishCart, Dish, Restaurant, User
     orders = []
-    for inv in invoices:
-        # Lấy thông tin khách hàng
+    # Lấy đơn hàng chờ nhận hàng (status=1) trước
+    invoices = list(Invoice.objects.filter(status__in=[0,1]).order_by('-status', 'time').select_related())
+    for invoice in invoices:
+        # Lấy nhà hàng
+        restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
+        # Lấy các dish_invoice
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        dishes = []
         customer = None
-        if inv['id_customer']:
-            cursor.execute("SELECT name, phone_number, street, district FROM user WHERE id=%s", (inv['id_customer'],))
-            customer = cursor.fetchone()
-        # Lấy các món ăn trong đơn
-        cursor.execute("SELECT id FROM dish_invoice WHERE id_invoice=%s", (inv['id'],))
-        dish_invoice_ids = [row['id'] for row in cursor.fetchall()]
-        items = []
-        for di_id in dish_invoice_ids:
-            cursor.execute("SELECT id_dish_cart FROM dish_invoice WHERE id=%s", (di_id,))
-            row = cursor.fetchone()
-            if not row:
-                continue
-            dish_cart_id = row['id_dish_cart']
-            cursor.execute("SELECT id_dish, quantity FROM dish_cart WHERE id=%s", (dish_cart_id,))
-            cart = cursor.fetchone()
-            if not cart:
-                continue
-            cursor.execute("SELECT name, price, unit FROM dish WHERE id=%s", (cart['id_dish'],))
-            dish = cursor.fetchone()
-            if dish:
-                items.append({
-                    'name': dish['name'],
-                    'price': dish['price'],
-                    'quantity': cart['quantity'],
-                    'unit': dish['unit'],
+        hide_order = False
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                # Nếu là đơn chờ nhận hàng, kiểm tra món bị xóa
+                if invoice.status == 1 and dish.is_delected:
+                    hide_order = True
+                    break
+                dishes.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
                 })
+        # Nếu là đơn chờ nhận hàng và có món bị xóa, cập nhật status=2 và bỏ qua
+        if invoice.status == 1 and hide_order:
+            invoice.status = 2
+            invoice.save(update_fields=['status'])
+            continue
         orders.append({
-            'customer_name': customer['name'] if customer else '',
-            'phone': customer['phone_number'] if customer else '',
-            'address': f"{customer['street']}, {customer['district']}" if customer else '',
-            'order_time': inv['time'].strftime('%H:%M %d/%m/%Y') if inv['time'] else '',
-            'total_payment': inv['total_payment'],
-            'items': items,
+            'invoice_id': invoice.id,
+            'restaurant_name': restaurant.name if restaurant else '',
+            'customer_phone': customer.phone_number if customer else '',
+            'customer_address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'dishes': dishes,
+            'total_payment': invoice.total_payment,
+            'status': invoice.status,
         })
-    cursor.close()
-    db.close()
-    return render(request, 'restaurantShippingOrder.html', {'orders': orders})
+    return render(request, 'shippingOrder.html', {'orders': orders})
 
 def restaurant_order_history(request):
     user_id = request.session.get('user_id')
@@ -457,15 +443,18 @@ def api_dish_reviews(request):
 @csrf_exempt
 def api_update_invoice_status(request):
     if request.method == 'POST':
+        import json
         data = json.loads(request.body)
         invoice_id = data.get('invoice_id')
         status = data.get('status')
-        invoice = Invoice.objects.filter(id=invoice_id).first()
-        if invoice and status in [1, 2]:
-            invoice.status = status
-            invoice.save(update_fields=['status'])
-            return JsonResponse({'success': True})
-        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
+        from .models import Invoice
+        with transaction.atomic():
+            invoice = Invoice.objects.filter(id=invoice_id).first()
+            if invoice and status in [1, 2]:
+                invoice.status = status
+                invoice.save(update_fields=['status'])
+                return JsonResponse({'success': True})
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng hoặc trạng thái không hợp lệ'})
     return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
 
 def pending_orders_view(request):

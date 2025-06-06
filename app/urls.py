@@ -6,7 +6,7 @@ urlpatterns = [
     path('dish-detail/', views.dish_detail, name='dish-detail'),
     path('restaurant-view-details/', views.restaurant_view_details, name='restaurant-view-details'),
     path('cart/', views.cart, name='cart'),
-    path('shipping-order/', views.shipping_order, name='shipping-order'),
+    path('shipping-order/', views.shipping_orders_view, name='shipping-orders'),
     path('order-history/', views.order_history, name='order-history'),
     path('spending-statistics/', views.spending_statistics, name='spending-statistics'),
     path('change-password/', views.change_password, name='change-password'),
@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/update-dish/', views.api_update_dish, name='api-update-dish'),
     path('api/delete-dish/', views.api_delete_dish, name='api-delete-dish'),
     path('api/dish-reviews/', views.api_dish_reviews, name='api-dish-reviews'),
+    path('api/update-invoice-status/', views.api_update_invoice_status, name='api-update-invoice-status'),
 
 ]
