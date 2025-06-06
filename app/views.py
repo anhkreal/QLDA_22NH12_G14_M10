@@ -10,6 +10,8 @@ from django.db import connection, transaction
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 import unicodedata
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 def customer_home(request):
     query = request.GET.get('q', '')
