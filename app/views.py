@@ -926,8 +926,15 @@ def restaurant_owner_info(request):
         if not user or user.role != 1:  # Chỉ chủ cửa hàng
             return redirect('login')
 
+        # Lấy thông tin nhà hàng nếu có
+        user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+        restaurant = None
+        if user_restaurant:
+            restaurant = Restaurant.objects.filter(id=user_restaurant.id_restaurant).first()
+
         context = {
-            'user': user
+            'user': user,
+            'restaurant': restaurant
         }
         return render(request, 'restaurantOwnerInfo.html', context)
 
@@ -936,38 +943,39 @@ def restaurant_owner_info(request):
         if not user_id:
             return JsonResponse({"success": False, "message": "Vui lòng đăng nhập"})
 
-        try:
-            # Lấy dữ liệu từ form
-            name = request.POST.get('name', '').strip()
-            phone = request.POST.get('phone', '').strip()
-            street = request.POST.get('street', '').strip()
-            district = request.POST.get('district', '').strip()
-
-            # Validate dữ liệu
-            if not name:
-                return JsonResponse({"success": False, "message": "Họ và tên không được để trống"})
-            if not phone:
-                return JsonResponse({"success": False, "message": "Số điện thoại không được để trống"})
-            if not street:
-                return JsonResponse({"success": False, "message": "Tên đường không được để trống"})
-            if not district:
-                return JsonResponse({"success": False, "message": "Quận không được để trống"})
-
+        # Phân biệt cập nhật user hay nhà hàng dựa vào trường name
+        if 'name' in request.POST and 'phone' in request.POST:
             # Cập nhật thông tin user
-            user = User.objects.filter(id=user_id).first()
-            if user and user.role == 1:  # Chỉ chủ cửa hàng
-                user.name = name
-                user.phone_number = phone
-                user.street = street
-                user.district = district
-                user.save()
+            try:
+                name = request.POST.get('name', '').strip()
+                phone = request.POST.get('phone', '').strip()
+                street = request.POST.get('street', '').strip()
+                district = request.POST.get('district', '').strip()
 
-                return JsonResponse({"success": True, "message": "Cập nhật thông tin thành công"})
-            else:
-                return JsonResponse({"success": False, "message": "Không tìm thấy thông tin người dùng hoặc không có quyền"})
+                if not name:
+                    return JsonResponse({"success": False, "message": "Họ và tên không được để trống"})
+                if not phone:
+                    return JsonResponse({"success": False, "message": "Số điện thoại không được để trống"})
+                if not street:
+                    return JsonResponse({"success": False, "message": "Tên đường không được để trống"})
+                if not district:
+                    return JsonResponse({"success": False, "message": "Quận không được để trống"})
 
-        except Exception as e:
-            return JsonResponse({"success": False, "message": f"Có lỗi xảy ra: {str(e)}"})
+                user = User.objects.filter(id=user_id).first()
+                if user and user.role == 1:
+                    user.name = name
+                    user.phone_number = phone
+                    user.street = street
+                    user.district = district
+                    user.save()
+                    return JsonResponse({"success": True, "message": "Cập nhật thông tin thành công"})
+                else:
+                    return JsonResponse({"success": False, "message": "Không tìm thấy thông tin người dùng hoặc không có quyền"})
+            except Exception as e:
+                return JsonResponse({"success": False, "message": f"Có lỗi xảy ra: {str(e)}"})
+
+        # Nếu là thêm mới/cập nhật nhà hàng thì chuyển sang view restaurant_info
+        # (Form nhà hàng gửi POST tới /restaurant-info/)
 
     return JsonResponse({"success": False, "message": "Phương thức không được hỗ trợ"})
 

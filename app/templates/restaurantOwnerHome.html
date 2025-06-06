@@ -30,11 +30,15 @@
     </div>
     <!-- Nút thông tin nhà hàng và thêm món ăn -->
     <div class="col-md-3 text-md-end mt-3 mt-md-0">
-      <button class="btn btn-outline-info mb-2" type="button" id="restaurant-info-btn">
+      <a class="btn btn-outline-info mb-2" id="restaurant-info-btn" href="{% url 'restaurant-info' %}">
         <i class="fas fa-info-circle"></i> Thông tin nhà hàng
-      </button>
+      </a>
       <br>
-      <button class="btn btn-success {% if not restaurant %}disabled pointer-events-none opacity-50{% endif %}" id="add-dish-btn"><i class="fas fa-plus"></i> Thêm món ăn</button>
+      <button
+        class="btn btn-success"
+        id="add-dish-btn">
+        <i class="fas fa-plus"></i> Thêm món ăn
+      </button>
     </div>
   </div>
   {% if restaurant_message %}
@@ -126,8 +130,8 @@
 </div>
 
 <script>
-  // Sự kiện ẩn/hiện đánh giá cho món ăn đầu tiên
   document.addEventListener('DOMContentLoaded', function() {
+    // Sự kiện ẩn/hiện đánh giá cho món ăn đầu tiên
     var btn = document.getElementById('toggle-review-btn');
     var reviewList = document.getElementById('review-list-1');
     if (btn && reviewList) {
@@ -146,9 +150,16 @@
     var addDishBtn = document.getElementById('add-dish-btn');
     var dishList = document.getElementById('dish-list');
     var restaurantId = "{{ restaurant.id|default:'' }}";
+    var restaurantStreet = "{{ restaurant.street|default:'' }}";
+    var restaurantDistrict = "{{ restaurant.district|default:'' }}";
 
-    if (addDishBtn && dishList && !addDishBtn.classList.contains('disabled')) {
+    if (addDishBtn && dishList) {
       addDishBtn.addEventListener('click', function() {
+        // Kiểm tra điều kiện trước khi thêm món ăn
+        if (!restaurantId || !restaurantStreet || !restaurantDistrict) {
+          alert("Bạn cần nhập đầy đủ thông tin và vị trí nhà hàng trước khi thêm món ăn!");
+          return;
+        }
         var newItem = document.createElement('div');
         newItem.className = 'list-group-item d-flex align-items-center justify-content-between flex-wrap py-3 px-2';
         newItem.innerHTML = `
@@ -336,71 +347,73 @@
       }
 
       // Lưu món ăn
-      form.onsubmit = async function(e) {
-        e.preventDefault();
-        alertBox.classList.add('d-none');
-        alertBox.classList.remove('alert-success', 'alert-danger');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', async function(e) {
+          e.preventDefault();
+          alertBox.classList.add('d-none');
+          alertBox.classList.remove('alert-success', 'alert-danger');
 
-        var name = form.querySelector('.dish-name').value.trim();
-        var price = form.querySelector('.dish-price').value.trim();
-        var unit = form.querySelector('.dish-unit').value.trim();
-        var desc = form.querySelector('.dish-desc').value.trim();
-        var imgFile = imgInput.files[0];
+          var name = form.querySelector('.dish-name').value.trim();
+          var price = form.querySelector('.dish-price').value.trim();
+          var unit = form.querySelector('.dish-unit').value.trim();
+          var desc = form.querySelector('.dish-desc').value.trim();
+          var imgFile = imgInput.files[0];
 
-        if (!name || !price || !unit || !desc) {
-          alertBox.textContent = "Vui lòng nhập đầy đủ thông tin!";
-          alertBox.className = "dish-alert alert alert-danger mt-2";
-          alertBox.classList.remove('d-none');
-          return;
-        }
-        if (isNaN(price) || Number(price) <= 0) {
-          alertBox.textContent = "Giá phải là số dương!";
-          alertBox.className = "dish-alert alert alert-danger mt-2";
-          alertBox.classList.remove('d-none');
-          return;
-        }
-        if (imgFile && !imgFile.type.startsWith('image/')) {
-          alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
-          alertBox.className = "dish-alert alert alert-danger mt-2";
-          alertBox.classList.remove('d-none');
-          return;
-        }
-
-        var formData = new FormData();
-        formData.append('id', dishId);
-        formData.append('name', name);
-        formData.append('price', price);
-        formData.append('unit', unit);
-        formData.append('decription', desc);
-        if (imgFile) formData.append('image', imgFile);
-
-        try {
-          let res = await fetch('/api/update-dish/', {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": "{{ csrf_token }}"
-            },
-            body: formData
-          });
-          let data = await res.json();
-          if (data.success) {
-            alertBox.textContent = "Cập nhật món ăn thành công!";
-            alertBox.className = "dish-alert alert alert-success mt-2";
+          if (!name || !price || !unit || !desc) {
+            alertBox.textContent = "Vui lòng nhập đầy đủ thông tin!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
             alertBox.classList.remove('d-none');
-            setTimeout(function() {
-              window.location.reload();
-            }, 1000);
-          } else {
-            alertBox.textContent = data.message || "Cập nhật thất bại!";
+            return;
+          }
+          if (isNaN(price) || Number(price) <= 0) {
+            alertBox.textContent = "Giá phải là số dương!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+            return;
+          }
+          if (imgFile && !imgFile.type.startsWith('image/')) {
+            alertBox.textContent = "Vui lòng chọn đúng định dạng ảnh!";
+            alertBox.className = "dish-alert alert alert-danger mt-2";
+            alertBox.classList.remove('d-none');
+            return;
+          }
+
+          var formData = new FormData();
+          formData.append('id', dishId);
+          formData.append('name', name);
+          formData.append('price', price);
+          formData.append('unit', unit);
+          formData.append('decription', desc);
+          if (imgFile) formData.append('image', imgFile);
+
+          try {
+            let res = await fetch('/api/update-dish/', {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+              },
+              body: formData
+            });
+            let data = await res.json();
+            if (data.success) {
+              alertBox.textContent = "Cập nhật món ăn thành công!";
+              alertBox.className = "dish-alert alert alert-success mt-2";
+              alertBox.classList.remove('d-none');
+              setTimeout(function() {
+                window.location.reload();
+              }, 1000);
+            } else {
+              alertBox.textContent = data.message || "Cập nhật thất bại!";
+              alertBox.className = "dish-alert alert alert-danger mt-2";
+              alertBox.classList.remove('d-none');
+            }
+          } catch (err) {
+            alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
             alertBox.className = "dish-alert alert alert-danger mt-2";
             alertBox.classList.remove('d-none');
           }
-        } catch (err) {
-          alertBox.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
-          alertBox.className = "dish-alert alert alert-danger mt-2";
-          alertBox.classList.remove('d-none');
-        }
-      };
+        });
+      }
 
       // Xóa món ăn (is_delected = 1)
       if (deleteBtn) {
@@ -429,7 +442,7 @@
               }, 1000);
             } else {
               alertBox.textContent = data.message || "Xóa món ăn thất bại!";
-              alertBox className = "dish-alert alert alert-danger mt-2";
+              alertBox.className = "dish-alert alert alert-danger mt-2";
               alertBox.classList.remove('d-none');
             }
           } catch (err) {

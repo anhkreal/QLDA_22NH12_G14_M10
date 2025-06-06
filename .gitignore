@@ -1,2 +1,4 @@
 __pycache__/
 
+app/__pycache__/urls.cpython-311.pyc
+app/__pycache__/views.cpython-311.pyc
