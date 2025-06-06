@@ -12,3 +12,4 @@ def b64encode(value):
         except Exception:
             return ''
     return ''
+

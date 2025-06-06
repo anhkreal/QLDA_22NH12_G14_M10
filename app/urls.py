@@ -35,3 +35,4 @@ urlpatterns = [
     path('restaurants/', views.restaurant_list, name='restaurant-list'),
     path('api/delete-cart-item/', views.api_delete_cart_item, name='api-delete-cart-item'),
 ]
+

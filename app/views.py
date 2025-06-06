@@ -104,12 +104,15 @@ def order_history(request):
     user_id = request.session.get('user_id')
     if not user_id:
         return redirect('login')
-    # Lấy các hóa đơn đã hoàn tất (status=3) hoặc bị từ chối (status=2) của user
-    invoices = Invoice.objects.filter(id_customer=user_id, status__in=[2, 3]).order_by('-time')
+    # Lấy tất cả hóa đơn hoàn tất (status=3) hoặc bị từ chối (status=2)
+    invoices = Invoice.objects.filter(status__in=[2, 3]).order_by('-time')
     orders = []
     for invoice in invoices:
+        # Kiểm tra user có phải là khách hàng của hóa đơn này không
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id, id_customer=user_id)
+        if not dish_invoices.exists():
+            continue
         restaurant = Restaurant.objects.filter(id=invoice.id_restaurant).first()
-        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
         dishes = []
         for di in dish_invoices:
             dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
@@ -594,18 +597,21 @@ def pending_orders_view(request):
     orders = []
     with connection.cursor() as cursor:
         cursor.execute('''
-            SELECT i.id, i.time, i.total_payment, i.id_customer
+            SELECT i.id, i.time, i.total_payment
             FROM invoice i
             WHERE i.status = 0
             ORDER BY i.time ASC
         ''')
         invoices = cursor.fetchall()
         for inv in invoices:
-            invoice_id, order_time, total_payment, customer_id = inv
-            # Lấy thông tin khách hàng
+            invoice_id, order_time, total_payment = inv
+            # Lấy id_customer đầu tiên từ dish_invoice
+            cursor.execute('SELECT id_customer FROM dish_invoice WHERE id_invoice = %s LIMIT 1', [invoice_id])
+            customer_row = cursor.fetchone()
             customer = None
-            if customer_id:
-                cursor.execute('SELECT first_name, last_name, email FROM auth_user WHERE id = %s', [customer_id])
+            if customer_row:
+                customer_id = customer_row[0]
+                cursor.execute('SELECT name, phone_number, street, district FROM user WHERE id = %s', [customer_id])
                 customer = cursor.fetchone()
             # Lấy danh sách món ăn
             cursor.execute('''
@@ -625,9 +631,9 @@ def pending_orders_view(request):
             ]
             orders.append({
                 'invoice_id': invoice_id,
-                'customer_name': (customer[0] + ' ' + customer[1]) if customer else '',
-                'customer_phone': customer[2] if customer else '',
-                'customer_address': '',  # Nếu có trường địa chỉ thì lấy thêm
+                'customer_name': customer[0] if customer else '',
+                'customer_phone': customer[1] if customer else '',
+                'customer_address': f"{customer[2]}, {customer[3]}" if customer and customer[2] and customer[3] else '',
                 'order_time': order_time.strftime('%H:%M %d/%m/%Y') if order_time else '',
                 'dishes': items,
                 'total_payment': total_payment,
@@ -691,3 +697,4 @@ def api_delete_cart_item(request):
     # Chỉ xóa dish_invoice của user hiện tại và chưa có invoice (chưa đặt hàng)
     deleted = DishInvoice.objects.filter(id_dish_cart=dish_cart_id, id_customer=user_id, id_invoice__isnull=True).delete()
     return JsonResponse({'success': True})
+
