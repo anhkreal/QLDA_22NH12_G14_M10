@@ -78,7 +78,7 @@
   <!-- Top Bar: Hàng 1 -->
   <div class="top-bar py-2 container-custom d-flex justify-content-between align-items-center">
     <div>
-      <a href="{% url 'customer-home' %}" class="me-3"><i class="fas fa-home"></i> Trang chủ</a>
+      {# <a href="{% url 'customer-home' %}" class="me-3"><i class="fas fa-home"></i> Trang chủ</a> #}
       <a href="{% url 'shipping-orders' %}" class="me-3 {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
         <i class="fas fa-shipping-fast"></i> Đơn hàng vận chuyển
       </a>
@@ -91,9 +91,7 @@
       {# Bỏ giỏ hàng ở thanh trên #}
     </div>
     <div class="d-flex align-items-center">
-      <a href="{% url 'cart' %}" class="me-3 position-relative {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}">
-        <i class="fas fa-shopping-cart fa-lg"></i>
-      </a>
+      {# Bỏ icon giỏ hàng bên cạnh tên tài khoản #}
       <div class="dropdown">
         <a class="dropdown-toggle {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fas fa-user-circle"></i>
@@ -135,9 +133,9 @@
           <button class="btn btn-warning" type="submit"><i class="fas fa-search" style="color:#222;"></i></button>
         </div>
       </form>
-      <a href="{% url 'cart' %}" class="ms-3 d-flex align-items-center {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" id="cart-link" style="font-size: 1.5em;">
+       <a href="{% url 'cart' %}" class="ms-3 d-flex align-items-center {% if not request.session.user_id %}disabled pointer-events-none text-muted{% endif %}" id="cart-link" style="font-size: 1.5em;">
         <i class="fas fa-shopping-cart" style="color:#222;"></i>
-      </a>
+      </a> 
     </div>
     <!-- Bỏ giỏ hàng -->
   </div>

@@ -30,50 +30,15 @@
     <span class="me-3 fw-semibold">Xem theo:</span>
     <button id="btn-day" class="btn btn-outline-warning me-2 active">Ngày</button>
     <button id="btn-week" class="btn btn-outline-warning me-2">Tuần</button>
+    {# Bỏ nút Tháng và Năm #}
   </div>
   <canvas id="spendingChart" height="350"></canvas>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html
+// filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatistics.html
 
-// Tạo dữ liệu mẫu
-function getDayLabels() {
-  const labels = [];
-  const today = new Date();
-  for (let i = 30; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    labels.push(d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }));
-  }
-  return labels;
-}
-function getWeekLabels() {
-  const labels = [];
-  const today = new Date();
-  for (let i = 51; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i * 7);
-    const week = d.getWeekNumber();
-    labels.push('Tuần ' + week + '/' + d.getFullYear());
-  }
-  return labels;
-}
-// Helper để lấy số tuần trong năm
-Date.prototype.getWeekNumber = function(){
-  var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-  var dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
-};
-
-function randomData(length, min, max) {
-  return Array.from({length}, () => Math.floor(Math.random() * (max - min + 1)) + min);
-}
-
-// Lấy dữ liệu từ backend
 let dayLabels = {{ day_labels|safe }};
 let weekLabels = {{ week_labels|safe }};
 let dayData = {{ day_data|safe }};
@@ -138,7 +103,6 @@ document.getElementById('btn-week').onclick = function() {
 </script>
 
 <style>
-/* filepath: e:\Semester6\QLDA CNTT\testproject\myproject\app\templates\spendingStatitics.html */
 #btn-day.active, #btn-week.active {
   color: #fff;
   background-color: #ffc107;
