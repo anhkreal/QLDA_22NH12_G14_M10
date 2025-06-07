@@ -272,8 +272,7 @@ document.getElementById('btn-order').addEventListener('click', function() {
   } else {
     shippingFee = 25000;
   }
-  // Tổng tiền món ăn (không gồm phí ship)
-  let dishesTotal = total - shippingFee;
+  let dishesTotal = total;
   if (dishesTotal < 0) dishesTotal = 0;
 
   // Gửi AJAX tạo hóa đơn

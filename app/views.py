@@ -63,19 +63,26 @@ def dish_detail(request):
         # Lấy các dish_cart của món này
         dish_carts = DishCart.objects.filter(id_dish=dish.id)
         dish_cart_ids = [dc.id for dc in dish_carts]
-        # Số lượng đã bán (tổng quantity của các dish_cart đã có invoice)
-        sold_cart_ids = DishInvoice.objects.exclude(id_invoice__isnull=True).exclude(id_invoice__exact='').values_list('id_dish_cart', flat=True)
-        sold = DishCart.objects.filter(id__in=sold_cart_ids, id_dish=dish.id).aggregate(total=models.Sum('quantity'))['total'] or 0
         # Lấy các dish_invoice đã có invoice
         dish_invoices = DishInvoice.objects.filter(id_dish_cart__in=dish_cart_ids).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
-        rate_ids = [di.id_rate for di in dish_invoices if di.id_rate]
+        # Lấy các id_invoice duy nhất
+        invoice_ids = [di.id_invoice for di in dish_invoices if di.id_invoice]
+        # Lấy các invoice hoàn tất (status=2)
+        paid_invoices = Invoice.objects.filter(id__in=invoice_ids, status=2)
+        paid_invoice_ids = set(inv.id for inv in paid_invoices)
+        # Chỉ lấy các dish_invoice có invoice status=2
+        paid_dish_invoices = [di for di in dish_invoices if di.id_invoice in paid_invoice_ids]
+        paid_dish_cart_ids = [di.id_dish_cart for di in paid_dish_invoices]
+        paid_dish_carts = DishCart.objects.filter(id__in=paid_dish_cart_ids)
+        sold = sum(dc.quantity or 0 for dc in paid_dish_carts)
+        # Đánh giá
+        rate_ids = [di.id_rate for di in paid_dish_invoices if di.id_rate]
         rates = Rate.objects.filter(id__in=rate_ids).order_by('-id')[:10]
-        # Tính trung bình số sao
         if rate_ids:
             avg_star = Rate.objects.filter(id__in=rate_ids).aggregate(avg=models.Avg('star'))['avg'] or 0
         reviews = []
         for rate in rates:
-            di = next((di for di in dish_invoices if di.id_rate == rate.id), None)
+            di = next((di for di in paid_dish_invoices if di.id_rate == rate.id), None)
             customer = User.objects.filter(id=di.id_customer).first() if di else None
             reviews.append({
                 'star': rate.star,
@@ -218,55 +225,67 @@ def order_history(request):
         })
     return render(request, 'orderHistory.html', {'orders': orders})
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Sum, Count
+from datetime import datetime, timedelta
+from collections import defaultdict
+import json
+
 def spending_statistics(request):
     user_id = request.session.get('user_id')
     if not user_id:
         return redirect('login')
-
     user = User.objects.filter(id=user_id).first()
-    if not user or user.role != 0:  # Chỉ khách hàng mới có thống kê chi tiêu
+    if not user or user.role != 0:
         return redirect('login')
 
-    # Lấy tất cả dish_invoice của khách hàng
-    dish_invoices = DishInvoice.objects.filter(id_customer=user_id).exclude(id_invoice__isnull=True).exclude(id_invoice__exact='')
-    invoice_ids = [di.id_invoice for di in dish_invoices]
+    # 1. Truy vấn tất cả các hóa đơn hoàn tất (status=2)
+    invoices = Invoice.objects.filter(status=2, id_deleted__isnull=True)
+    print(f"[spending_statistics] Step 1: Found {invoices.count()} invoices with status=2")
 
-    # Lấy các hóa đơn trạng thái 2 (hoàn tất)
-    invoices = Invoice.objects.filter(id__in=invoice_ids, status=2, id_deleted__isnull=True)
+    total_orders = 0
+    total_spending = 0
 
-    # Tổng chi tiêu
-    total_spending = sum((invoice.total_payment or 0) + (invoice.shipping_fee or 0) for invoice in invoices)
+    # 2. Với mỗi hóa đơn, kiểm tra xem có món ăn hóa đơn nào thuộc về khách hàng này không
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        print(f"[spending_statistics] Step 2: Invoice {invoice.id} has {dish_invoices.count()} dish_invoices")
+        # Kiểm tra có ít nhất 1 dish_invoice của khách hàng này không
+        if dish_invoices.filter(id_customer=user_id).exists():
+            print(f"[spending_statistics] Step 3: Invoice {invoice.id} contains dish_invoice for user {user_id}")
+            total_orders += 1
+            total_spending += (invoice.total_payment or 0) + (invoice.shipping_fee or 0)
+        else:
+            print(f"[spending_statistics] Step 3: Invoice {invoice.id} does NOT contain dish_invoice for user {user_id}")
 
-    # Đếm tổng đơn hàng: số lượng dish_invoice có id_customer=user_id và hóa đơn trạng thái 2 (không trùng lặp dish_invoice)
-    total_orders = DishInvoice.objects.filter(
-        id_customer=user_id,
-        id_invoice__in=invoices.values_list('id', flat=True)
-    ).count()
-
-    # Thống kê số lượng đơn hàng trạng thái 2 theo ngày (30 ngày gần nhất)
+    # ...existing code for chart/statistics...
     today = datetime.now().date()
     daily_order_count = defaultdict(int)
     for invoice in invoices:
-        if invoice.time:
+        # Chỉ tính ngày cho các hóa đơn mà khách hàng này đã đặt
+        if invoice.time and DishInvoice.objects.filter(id_invoice=invoice.id, id_customer=user_id).exists():
             invoice_date = invoice.time.date()
             if (today - invoice_date).days <= 30:
                 daily_order_count[invoice_date] += 1
+    print(f"[spending_statistics] Step 4: daily_order_count = {dict(daily_order_count)}")
     day_labels = []
     day_data = []
     for i in range(30, -1, -1):
         date = today - timedelta(days=i)
         day_labels.append(date.strftime('%d/%m'))
         day_data.append(daily_order_count.get(date, 0))
+    print(f"[spending_statistics] Step 5: day_labels = {day_labels}")
+    print(f"[spending_statistics] Step 5: day_data = {day_data}")
 
-    # Thống kê số lượng đơn hàng trạng thái 2 theo tuần (12 tuần gần nhất)
     weekly_order_count = defaultdict(int)
     for invoice in invoices:
-        if invoice.time:
+        if invoice.time and DishInvoice.objects.filter(id_invoice=invoice.id, id_customer=user_id).exists():
             invoice_date = invoice.time.date()
             if (today - invoice_date).days <= 84:
                 year, week, _ = invoice_date.isocalendar()
                 week_key = f"{year}-W{week:02d}"
                 weekly_order_count[week_key] += 1
+    print(f"[spending_statistics] Step 6: weekly_order_count = {dict(weekly_order_count)}")
     week_labels = []
     week_data = []
     for i in range(11, -1, -1):
@@ -275,6 +294,10 @@ def spending_statistics(request):
         week_key = f"{year}-W{week:02d}"
         week_labels.append(f"Tuần {week}/{year}")
         week_data.append(weekly_order_count.get(week_key, 0))
+    print(f"[spending_statistics] Step 7: week_labels = {week_labels}")
+    print(f"[spending_statistics] Step 7: week_data = {week_data}")
+
+    print(f"[spending_statistics] Step 8: total_orders = {total_orders}, total_spending = {total_spending}")
 
     context = {
         'day_labels': json.dumps(day_labels),
@@ -285,7 +308,6 @@ def spending_statistics(request):
         'total_orders': total_orders,
         'user': user
     }
-
     return render(request, 'spendingStatistics.html', context)
 
 def change_password(request):
@@ -512,7 +534,41 @@ def restaurant_pending_order(request):
     return render(request, 'restaurantPendingOrder.html')
 
 def restaurant_shipping_order(request):
-    return render(request, 'restaurantShippingOrder.html')
+    user_id = request.session.get('user_id')
+    # Lấy id nhà hàng của chủ nhà hàng
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    if not user_restaurant:
+        return render(request, 'restaurantShippingOrder.html', {'orders': []})
+    restaurant_id = user_restaurant.id_restaurant
+    # Lấy các hóa đơn đang giao của nhà hàng này (status=1)
+    invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=1).order_by('-time')
+    orders = []
+    for invoice in invoices:
+        dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
+        items = []
+        customer = None
+        for di in dish_invoices:
+            dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
+            dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
+            if not customer:
+                customer = User.objects.filter(id=di.id_customer).first()
+            if dish and dish_cart:
+                items.append({
+                    'name': dish.name,
+                    'quantity': dish_cart.quantity,
+                    'price': dish.price,
+                    'unit': dish.unit,
+                })
+        orders.append({
+            'customer_name': customer.name if customer else '',
+            'phone': customer.phone_number if customer else '',
+            'address': f"{customer.street}, {customer.district}" if customer else '',
+            'order_time': invoice.time.strftime('%H:%M %d/%m/%Y') if invoice.time else '',
+            'items': items,
+            'total_payment': invoice.total_payment,
+            'status': invoice.status,
+        })
+    return render(request, 'restaurantShippingOrder.html', {'orders': orders})
 
 def revenue_statistics(request):
     user_id = request.session.get('user_id')

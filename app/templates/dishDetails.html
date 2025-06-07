@@ -40,7 +40,15 @@
           {% endif %}
         </span>
         <span>| {{ reviews|length }} đánh giá</span>
-        <span>| Đã bán: {{ sold|default:0 }}</span>
+        <span>
+          | Đã bán: 
+          {# Số lượng đã bán chỉ tính các dish_cart có dish_invoice liên kết với invoice status=2 #}
+          {% if sold is not None %}
+            {{ sold }}
+          {% else %}
+            0
+          {% endif %}
+        </span>
       </div>
       <div class="mb-3">
         <span class="fs-2 fw-bold text-danger">{{ dish.price|floatformat:0 }}đ</span>
