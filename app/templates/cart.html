@@ -12,15 +12,8 @@
       <!-- Header -->
       <div class="d-flex align-items-center bg-light px-3 py-2 border-bottom fw-bold">
         {# Đánh dấu checked nếu tất cả item đều checked #}
-        {% with all_checked=True %}
-          {% for item in group.items %}
-            {% if not item.checked %}
-              {% with all_checked=False %}
-              {% endwith %}
-            {% endif %}
-          {% endfor %}
-          <input type="checkbox" class="form-check-input me-3 restaurant-checkbox"
-                 {% if all_checked and group.items %}checked{% endif %}>
+        {% with all_checked=False %}
+          <input type="checkbox" class="form-check-input me-3 restaurant-checkbox">
         {% endwith %}
         <span class="me-3 fs-5">{{ group.restaurant.name }}</span>
         <span class="me-3" style="width:70px;"></span>
@@ -32,8 +25,7 @@
       {% for item in group.items %}
       <div class="d-flex align-items-center px-3 py-2 border-bottom cart-item-row"
            data-dish-cart-id="{{ item.dish_cart.id }}">
-        <input type="checkbox" class="form-check-input me-3 dish-checkbox"
-               {% if item.checked %}checked{% endif %}>
+        <input type="checkbox" class="form-check-input me-3 dish-checkbox">
         {% if item.dish.image %}
         <img src="data:image/jpeg;base64,{{ item.dish.image|b64encode }}"
              alt="{{ item.dish.name }}" class="me-3 rounded"

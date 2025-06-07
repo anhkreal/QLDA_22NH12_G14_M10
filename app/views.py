@@ -760,6 +760,7 @@ def revenue_statistics(request):
 def shipping_orders_view(request):
     from .models import Invoice, DishInvoice, DishCart, Dish, Restaurant, User, UserRestaurant
     orders = []
+    user_id = request.session.get('user_id')
     # Lấy đơn hàng chờ nhận hàng (status=1) trước
     invoices = list(Invoice.objects.filter(status__in=[0,1]).order_by('-status', 'time').select_related())
     for invoice in invoices:
@@ -777,12 +778,14 @@ def shipping_orders_view(request):
         dish_invoices = DishInvoice.objects.filter(id_invoice=invoice.id)
         dishes = []
         customer = None
+        customer_id = None
         hide_order = False
         for di in dish_invoices:
             dish_cart = DishCart.objects.filter(id=di.id_dish_cart).first()
             dish = Dish.objects.filter(id=dish_cart.id_dish).first() if dish_cart else None
             if not customer:
                 customer = User.objects.filter(id=di.id_customer).first()
+                customer_id = di.id_customer
             if dish and dish_cart:
                 # Nếu là đơn chờ nhận hàng, kiểm tra món bị xóa
                 if invoice.status == 1 and dish.is_delected:
@@ -810,7 +813,19 @@ def shipping_orders_view(request):
             'total_payment': invoice.total_payment,
             'status': invoice.status,
         })
-    return render(request, 'shippingOrder.html', {'orders': orders})
+    # In ra danh sách chi tiết order cùng với user_id dưới terminal
+    print("=== SHIPPING ORDERS DEBUG ===")
+    print(f"Current user_id: {user_id}")
+    for order in orders:
+        print(f"Order invoice_id: {order['invoice_id']}, customer_id: {order['customer_id']}, status: {order['status']}")
+        print(f"  Restaurant: {order['restaurant_name']}, Owner phone: {order['owner_phone']}")
+        print(f"  Customer phone: {order['customer_phone']}, Address: {order['customer_address']}")
+        print(f"  Order time: {order['order_time']}, Total: {order['total_payment']}")
+        print(f"  Dishes:")
+        for dish in order['dishes']:
+            print(f"    - {dish['name']} x{dish['quantity']} ({dish['unit']}) - {dish['price']}đ")
+        print("------")
+    return render(request, 'shippingOrder.html', {'orders': orders, 'user': User.objects.filter(id=user_id).first()})
 
 def restaurant_order_history(request):
     user_id = request.session.get('user_id')
@@ -1122,17 +1137,23 @@ def api_update_invoice_status(request):
     return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ'})
 
 def pending_orders_view(request):
+    user_id = request.session.get('user_id')
+    user_restaurant = UserRestaurant.objects.filter(id_user=user_id).first()
+    restaurant_id = user_restaurant.id_restaurant if user_restaurant else None
     orders = []
     with connection.cursor() as cursor:
         cursor.execute('''
-            SELECT i.id, i.time, i.total_payment
+            SELECT i.id, i.time, i.total_payment, i.id_restaurant
             FROM invoice i
             WHERE i.status = 0
             ORDER BY i.time ASC
         ''')
         invoices = cursor.fetchall()
         for inv in invoices:
-            invoice_id, order_time, total_payment = inv
+            invoice_id, order_time, total_payment, invoice_restaurant_id = inv
+            # Chỉ lấy đơn hàng có id_restaurant trùng với nhà hàng tài khoản
+            if not restaurant_id or str(invoice_restaurant_id) != str(restaurant_id):
+                continue
             # Lấy id_customer đầu tiên từ dish_invoice
             cursor.execute('SELECT id_customer FROM dish_invoice WHERE id_invoice = %s LIMIT 1', [invoice_id])
             customer_row = cursor.fetchone()
@@ -1159,6 +1180,7 @@ def pending_orders_view(request):
             ]
             orders.append({
                 'invoice_id': invoice_id,
+                'restaurant_id': invoice_restaurant_id,
                 'customer_name': customer[0] if customer else '',
                 'customer_phone': customer[1] if customer else '',
                 'customer_address': f"{customer[2]}, {customer[3]}" if customer and customer[2] and customer[3] else '',
@@ -1166,7 +1188,10 @@ def pending_orders_view(request):
                 'dishes': items,
                 'total_payment': total_payment,
             })
-    return render(request, 'restaurantPendingOrder.html', {'orders': orders})
+    return render(request, 'restaurantPendingOrder.html', {
+        'orders': orders,
+        'user_restaurant': user_restaurant,
+    })
 
 def confirm_pending_order(request, invoice_id):
     if request.method == 'POST':
