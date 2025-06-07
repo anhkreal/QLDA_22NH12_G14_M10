@@ -540,7 +540,7 @@ def restaurant_shipping_order(request):
     if not user_restaurant:
         return render(request, 'restaurantShippingOrder.html', {'orders': []})
     restaurant_id = user_restaurant.id_restaurant
-    # Lấy các hóa đơn đang giao của nhà hàng này (status=1)
+    # Lấy các hóa đơn đang giao (status=1) của nhà hàng này
     invoices = Invoice.objects.filter(id_restaurant=restaurant_id, status=1).order_by('-time')
     orders = []
     for invoice in invoices:
